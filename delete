@@ -1,0 +1,7 @@
+#!/bin/zsh
+
+keep=3rzy_bms309403_search_space_30_3
+stem=3rzy_bms309403
+for file in `ls ~/Documents/structures`
+do
+	if file
