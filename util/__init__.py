@@ -1,2 +1,2 @@
 from .util import clean_directory
-from .package import convert_environment_to_requirements
+from .package import conda_env_to_requirements

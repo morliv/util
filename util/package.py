@@ -1,5 +1,8 @@
+import argparse
 import re
 import yaml
+from pathlib import Path
+
 
 def conda_env_to_requirements(input_file, output_file):
     with open(input_file, 'r') as f:
@@ -22,3 +25,9 @@ def conda_env_to_requirements(input_file, output_file):
                         else:
                             f.write(f"{package_name}{relation}{package_version}\n")
 
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('path_to_environment_yaml')
+    args = parser.parse_args()
+    conda_env_to_requirements(args.path_to_environment_yaml)
