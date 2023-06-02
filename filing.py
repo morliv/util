@@ -16,7 +16,7 @@ def remove_occurances(string, file_path):
 
 def remove_spaces_and_line_symbols(name: str):
     for symbol in [' ', '_', '-']:
-        rename = name.replace(symbol, '')
+        name = name.replace(symbol, '')
     return name
 
 
@@ -24,7 +24,6 @@ def matches_ignoring_spaces_and_line_symbols(name: str, strings: List[str]):
     return remove_spaces_and_line_symbols(name) in \
             [remove_spaces_and_line_symbols(string) for string in strings]
     
-
 
 def read_file(file_path):
     with open(file_path) as file:
