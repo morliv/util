@@ -20,7 +20,8 @@ class Drive:
         for file_path in local.iterdir():
             if file_path.is_dir():
                 Drive.write_dir(file_path, drive_folder / local.name / file_path.name)
-            Drive.write_file(file_path, drive_folder / local.name)
+            else:
+                Drive.write_file(file_path, drive_folder / local.name)
 
     @staticmethod
     def write_file(file_path: Path, drive_folder: Path) -> Optional[str]:
