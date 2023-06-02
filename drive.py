@@ -13,7 +13,7 @@ from googleapiclient.http import MediaFileUpload
 import google_api
 
 class Drive:
-    service = google_api.service('drive')
+    service = google_api.service('drive', 3)
 
     @staticmethod
     def write_dir(local: Path, drive_folder: Path):
