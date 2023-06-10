@@ -10,22 +10,21 @@ import google_api
 def service():
     return google_api.service('sheets', 4)
 
+
 def get_values(spreadsheet_id, range_names):
     # creds, _ = google.auth.default()
     # pylint: disable=maybe-no-member
     try:
-        restResource = service().spreadsheets().values()
-        if type(range_names) is str:
-            result = service().spreadsheets().values().get(
-                spreadsheetId=spreadsheet_id, range=range_names, majorDimension='COLUMNS',
-                valueRenderOption='UNFORMATTED_VALUE').execute()
-        elif type(range_names) is list:
-            result = service().spreadsheets().values().batchGet(
-                spreadsheetId=spreadsheet_id, ranges=range_names, majorDimension='COLUMNS',
-                valueRenderOption='UNFORMATTED_VALUE').execute()
+        values = service().spreadsheets().values()
+        def get_range(get_func): return get_func(
+            spreadsheetId=spreadsheet_id, range=range_names,
+            valueRenderOption='UNFORMATTED_VALUE').execute()
+        if isinstance(range_names, str):
+            return get_range(values.get)
+        elif isinstance(range_names, list):
+            return get_range(values.getBatch)
         else:
             raise Error("'range_names' should be of type str or list")
-        return result
     except HttpError as error:
         print(f"An error occurred: {error}")
         return error

@@ -15,15 +15,16 @@ def remove_occurances(string, file_path):
 
 
 def remove_spaces_and_line_symbols(name: str):
-    for symbol in [' ', '_', '-']:
-        name = name.replace(symbol, '')
+    for symbol in [" ", "_", "-"]:
+        name = name.replace(symbol, "")
     return name
 
 
 def matches_ignoring_spaces_and_line_symbols(name: str, strings: List[str]):
-    return remove_spaces_and_line_symbols(name) in \
-            [remove_spaces_and_line_symbols(string) for string in strings]
-    
+    return remove_spaces_and_line_symbols(name) in [
+        remove_spaces_and_line_symbols(string) for string in strings
+    ]
+
 
 def read_file(file_path):
     with open(file_path) as file:
@@ -53,4 +54,3 @@ def mkdirs(path: Path, clean=False):
 
 def local_data_dir(file_attr: str):
     return mkdirs(Path(file_attr).resolve().parent / "data")
-

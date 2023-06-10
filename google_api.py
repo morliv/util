@@ -40,4 +40,3 @@ def creds():
         with open(token_path(), "w") as token:
             token.write(creds.to_json())
     return creds
-
