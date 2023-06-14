@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+
+cd /home/m/cure/data
+for dir in $(find -type f | grep -o '.*docks.*\/' | sort | uniq); do
+	echo "$dir";
+	echo "$(find "$dir" -maxdepth 1 -type f | wc -l)";
+	echo "Delete y/n?";
+	read answer;
+	if [[ "$answer" == "y" ]]; 
+		then rm -r $dir; 
+	fi;
+done
