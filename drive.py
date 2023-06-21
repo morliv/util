@@ -12,6 +12,19 @@ from googleapiclient.http import MediaFileUpload
 
 import google_api
 
+
+def main():
+    args = parsed_args()
+    Drive.write_dir(Path(args.path).expanduser(), Path(args.folder))
+
+
+def parsed_args():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path', type=str)
+    parser.add_argument('-f', '--folder', type=str)
+    return parser.parse_args()
+
+
 class Drive:
     service = google_api.service('drive', 3)
 
@@ -86,13 +99,6 @@ class Drive:
             print(f'An error occurred: {str(e)}')
             return None
 
-def args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', type=str)
-    parser.add_argument('-f', '--folder', type=str)
-    return parser.parse_args()
 
 if __name__=="__main__":
-    args = args()
-    Drive.write_dir(Path(args.path).expanduser(), Path(args.folder))
-
+    main()
