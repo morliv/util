@@ -15,13 +15,13 @@ import google_api
 
 def main():
     args = parsed_args()
-    Drive.write_dir(Path(args.path).expanduser(), Path(args.folder))
+    Drive.write(Path(args.local_path).expanduser(), Path(args.drive_path))
 
 
 def parsed_args():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-p', '--path', type=str)
-    parser.add_argument('-f', '--folder', type=str)
+    parser.add_argument('-l', '--local_path', type=str)
+    parser.add_argument('-d', '--drive_path', type=str)
     return parser.parse_args()
 
 
@@ -29,22 +29,16 @@ class Drive:
     service = google_api.service('drive', 3)
 
     @staticmethod
-    def write_dir(local: Path, drive_folder: Path):
-        for file_path in local.iterdir():
-            if file_path.is_dir():
-                Drive.write_dir(file_path, drive_folder / file_path.name)
-            else:
-                Drive.write_file(file_path, drive_folder)
-
-    @staticmethod
-    def write_file(file_path: Path, drive_folder: Path) -> Optional[str]:
+    def write(file_path: Path, drive_folder: Path) -> Optional[str]:
+        drive_folder_id = Drive.obtain_folder(drive_folder)
+        if file_path.is_dir():
+            for path in file_path.iterdir():
+                write_file(path, drive_folder / file_path.name)
         mimetype = magic.from_file(file_path, mime=True)
         try:
-            folder = Drive.obtain_folder(drive_folder)
-            
             file_metadata = {
                 'name': file_path.name,
-                'parents': folder['id']
+                'parents': drive_folder_id,
             }
             media = MediaFileUpload(file_path, mimetype=mimetype)
             file = Drive.service.files().create(body=file_metadata,
@@ -59,45 +53,21 @@ class Drive:
 
 
     @staticmethod
-    def obtain_folder(path: Path) -> Optional[dict]:
-        existing = Drive.existing_folder(path) 
-        if existing:
-            return existing
-        else:
-            return Drive.create_folder(path, Drive.obtain_folder(path.parent)['id'])
-
-
-    @staticmethod
-    def existing_folder(drive_folder: Path) -> Optional[dict]:
-        folder_id = 'root'
-        for folder_name in drive_folder.parts:
-            query = f"name = '{folder_name}' and mimeType = 'application/vnd.google-apps.folder' and '{folder_id}' in parents"
-            response = Drive.service.files().list(q=query, fields='files(id)').execute()
-            items = response.get('files', [])
-            if not items:
-                return None
-            folder_id = items[0]['id']
-        return {'id': folder_id}
-
-
-    @staticmethod
-    def create_folder(folder_path: Path, parent_folder_id='root') -> Optional[dict]:
-        try:
-            for folder_name in folder_path.parts:
-                folder_metadata = {
-                    'name': folder_name,
-                    'mimeType': 'application/vnd.google-apps.folder',
-                    'parents': [parent_folder_id]
-                }
-                
-                folder = Drive.service.files().create(body=folder_metadata, fields='id').execute()
-                parent_folder_id = folder['id']
-            
-            print(f'Folder created for folder_path {folder_path}. ID: {parent_folder_id}')
-            return {'id': parent_folder_id}
-        except Exception as e:
-            print(f'An error occurred: {str(e)}')
-            return None
+    def obtain_folder(path: Path) -> Optional[str]:
+        path = '/' / path
+        if len(path.parts) == 1:
+            return 'root'
+        folder_info= {
+            'name': path.name,
+            'mimetype': 'application/vnd.google-apps.folder',
+            'parents': [Drive.obtain_folder(path.parent)]
+        }
+        query = f"name = '{folder_info['name']}' and mimetype = {folder_info['mimetype']} and '{folder_info['parents'][0]}' in parents"
+        items = drive.service.files().list(q=query, fields='files(id)').execute().get('files', [])
+        if not items:
+            folder_id = drive.service.files().create(body=folder_info, fields='id').execute()['id']
+            print(f'folder created id: {folder_id}')
+        return folder_id
 
 
 if __name__=="__main__":
