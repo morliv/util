@@ -3,6 +3,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+from watchdog.events import FileSystemEventHandler
+from watchdog.observers import Observer
 
 def limit(process: subprocess.Popen, sec_limit: float, output_file: Path):
     stopped = False

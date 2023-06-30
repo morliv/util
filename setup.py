@@ -2,10 +2,12 @@ from setuptools import setup, find_packages
 
 setup(
     name="util",
-    version="1.0.0",
+    version="1.0.1",
     author="",
     description="",
     packages=find_packages(),
-    install_requires=[],
+    install_requires=[
+        "watchdog"
+    ],
     entry_points={},
 )
