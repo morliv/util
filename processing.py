@@ -39,9 +39,9 @@ class CustomEventHandler(FileSystemEventHandler):
             self.callback(event.src_path)
 
 
-def start_watchdog(directory_to_watch, callback):
+def call_upon_file_addition(directory_to_watch, callback):
     observer = Observer()
-    observer.schedule(CustomEventHandler(callback), directory_to_watch, recursive=True)
+    observer.schedule(CustomEventHandler(callback), str(directory_to_watch), recursive=True)
     observer.start()
     return observer
 

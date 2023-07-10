@@ -1,8 +1,11 @@
 from pathlib import Path
 import shutil
 import difflib
-from typing import List
+from typing import List, Set
 
+
+def prepend_path(dir_path, paths) -> Set[Path]:
+    return {Path(dir_path) / path for path in paths}
 
 def remove_occurances(string, file_path):
     with open(file_path, "r") as input_file:
