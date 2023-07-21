@@ -15,13 +15,14 @@ import google_api
 
 def main():
     args = parsed_args()
-    Drive.write(Path(args.local_path).expanduser(), Path(args.drive_path))
+    Drive.write(Path(args.local_path).expanduser(), Path(args.drive_folder), args.only_contents)
 
 
 def parsed_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--local_path', type=str)
-    parser.add_argument('-d', '--drive_path', type=str)
+    parser.add_argument('-d', '--drive_folder', type=str)
+    parser.add_argument('-o', '--only_contents', action='store_true')
     return parser.parse_args()
 
 
@@ -30,11 +31,13 @@ class Drive:
     files = google_api.service('drive', 3).files()
 
     @staticmethod
-    def write(file_path: Path, drive_folder: Path) -> Optional[str]:
+    def write(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[str]:
         drive_folder_ids = Drive.obtain_folders(drive_folder)
         if file_path.is_dir():
             for path in file_path.iterdir():
                 Drive.write(path, drive_folder / file_path.name)
+            if only_contents:
+                return None
         mimetype = magic.from_file(file_path, mime=True)
         try:
             file_metadata = {
@@ -76,7 +79,6 @@ class Drive:
         if folder_ids:
             print(f'Existing folder ids: {folder_ids}')
         else:
-            breakpoint()
             folder_ids = [Drive.files.create(body=folder_info, fields='id').execute()['id']]
             print(f'folder created, id: {folder_ids[0]}')
         return folder_ids
