@@ -65,7 +65,6 @@ class Drive:
     @staticmethod
     def obtain_folders(path: Path) -> Optional[List[str]]:
         path = '/' / path
-        breakpoint()
         if len(path.parts) == 1:
             return ['root']
         folder_info = {
