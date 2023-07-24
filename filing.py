@@ -45,16 +45,19 @@ def files_are_equivalent(file1_path: Path, file2_path: Path, print_diff=True):
     return all(analyze_line(line) for line in diff)
 
 
-def mkdirs(path: Path, clean=False):
+def renew(path: Path, mkdirs=True, clean=False, match_as_prefix=False):
     if path.exists() and clean:
-        if path.is_file():
-            path.unlink()
-        else:
+        if path.is_dir():
             shutil.rmtree(path)
-    if not path.exists():
+        elif match_as_prefix:
+            for match in path.glob('*'):
+                mkdirs(match, clean)
+        else:
+            path.unlink()   
+    if mkdirs and not path.exists():
         path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def local_data_dir(file_attr: str):
-    return mkdirs(Path(file_attr).resolve().parent / "data")
+    return renew(Path(file_attr).resolve().parent / "data", mkdirs=True)
