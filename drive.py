@@ -34,8 +34,8 @@ class Drive:
     def write(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[str]:
         drive_folder_ids = Drive.obtain_folders(drive_folder)
         if file_path.is_dir():
-            for path in file_path.iterdir():
-                Drive.write(path, drive_folder / file_path.name)
+            for subpath in file_path.iterdir():
+                Drive.write(subpath, drive_folder / file_path.name)
             if only_contents:
                 return None
         mimetype = magic.from_file(file_path, mime=True)
@@ -55,17 +55,6 @@ class Drive:
 
 
     @staticmethod
-    def list_files(name: str, mimeType: str, parent: Path) -> List:
-        query = f"name = '{name}' and mimeType = '{mimeType}' and '{parent}' in parents"
-        return Drive.files.list(q=query, fields='files(id)').execute().get('files', [])
-
-
-    @staticmethod
-    def matching_items(name: str, mimeType: str, parents: List) -> List:
-        return [file_dict['id'] for parent in parents for file_dict in Drive.list_files(name, mimeType, parent)]
-
-
-    @staticmethod
     def obtain_folders(path: Path) -> Optional[List[str]]:
         path = '/' / path
         if len(path.parts) == 1:
@@ -82,6 +71,17 @@ class Drive:
             folder_ids = [Drive.files.create(body=folder_info, fields='id').execute()['id']]
             print(f'folder created, id: {folder_ids[0]}')
         return folder_ids
+
+
+    @staticmethod
+    def matching_items(name: str, mimeType: str, parents: List) -> List:
+        return [file_dict['id'] for parent in parents for file_dict in Drive.list_files(name, mimeType, parent)]
+
+
+    @staticmethod
+    def list_files(name: str, mimeType: str, parent: Path) -> List:
+        query = f"name = '{name}' and mimeType = '{mimeType}' and '{parent}' in parents"
+        return Drive.files.list(q=query, fields='files(id)').execute().get('files', [])
 
 
     @staticmethod

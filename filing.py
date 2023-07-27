@@ -46,18 +46,24 @@ def files_are_equivalent(file1_path: Path, file2_path: Path, print_diff=True):
 
 
 def renew(path: Path, mkdirs=True, clean=False, match_as_prefix=False):
-    if path.exists() and clean:
+    if clean:
+        if path.is_file():
+            originally_file = True
+            path.unlink()   
         if path.is_dir():
             shutil.rmtree(path)
-        elif match_as_prefix:
+        if match_as_prefix:
             for match in path.glob('*'):
-                mkdirs(match, clean)
+                renew(match, clean)
+    originally_file = False
+    if mkdirs:
+        if originally_file:
+            path.parent.mkdir(parents=True, exist_ok=True)
         else:
-            path.unlink()   
-    if mkdirs and not path.exists():
-        path.mkdir(parents=True, exist_ok=True)
+            path.mkdir(parents=True, exist_ok=True)
     return path
 
 
 def local_data_dir(file_attr: str):
     return renew(Path(file_attr).resolve().parent / "data", mkdirs=True)
+
