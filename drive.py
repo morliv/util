@@ -1,21 +1,25 @@
 #!/usr/bin/env python3
 
 import argparse
+import io
+import hashlib
 from pathlib import Path
-from typing import Optional, List
+from typing import Optional, List, Set
+from itertools import chain
+from functools import partial
 
 import magic
 import google.auth
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
-from googleapiclient.http import MediaFileUpload
+from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import google_api
 
 
 def main():
     args = parsed_args()
-    Drive.write(Path(args.local_path).expanduser(), Path(args.drive_folder), args.only_contents)
+    Drive.sync(Path(args.local_path).expanduser(), Path(args.drive_folder), args.only_contents)
 
 
 def parsed_args():
@@ -31,58 +35,58 @@ class Drive:
     files = google_api.service('drive', 3).files()
 
     @staticmethod
-    def write(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[str]:
+    def sync(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[Set[str]]:
         drive_folder_ids = Drive.obtain_folders(drive_folder)
         if file_path.is_dir():
             for subpath in file_path.iterdir():
-                Drive.write(subpath, drive_folder / file_path.name)
-            if only_contents:
-                return None
-        mimetype = magic.from_file(file_path, mime=True)
+                Drive.sync(subpath, drive_folder if only_contents else drive_folder / file_path.name, only_contents=only_contents)
+            return drive_folder_ids
+
+        equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
+        if equivalent_file_ids:
+            return equivalent_file_ids
+
+        mimetype = magic.from_file(str(file_path), mime=True)
         try:
             file_metadata = {
                 'name': file_path.name,
-                'parents': drive_folder_ids,
+                'parents': list(drive_folder_ids),
             }
-            media = MediaFileUpload(file_path, mimetype=mimetype)
+            media = MediaFileUpload(str(file_path), mimetype=mimetype)
             file_id = Drive.service.files().create(body=file_metadata,
                                           media_body=media,
                                           fields='id').execute().get("id")
+            return {file_id}
         except HttpError as error:
             print(f'An error occurred: {error}')
 
-        return file_id if file_id else None
-
 
     @staticmethod
-    def obtain_folders(path: Path) -> Optional[List[str]]:
+    def obtain_folders(path: Path) -> Optional[Set[str]]:
         path = '/' / path
         if len(path.parts) == 1:
             return ['root']
         folder_info = {
             'name': path.name,
             'mimeType': 'application/vnd.google-apps.folder',
-            'parents': Drive.obtain_folders(path.parent)
+            'parents': list(Drive.obtain_folders(path.parent))
         }
-        folder_ids = Drive.matching_items(**folder_info)
+        folder_ids = Drive.matching_files_in_parents(**folder_info)
         if folder_ids:
             print(f'Existing folder ids: {folder_ids}')
         else:
             folder_ids = [Drive.files.create(body=folder_info, fields='id').execute()['id']]
-            print(f'folder created, id: {folder_ids[0]}')
+            print(f'Folder created, id: {folder_ids[0]}')
         return folder_ids
 
+    @staticmethod
+    def matching_files_in_parents(name: str, mimeType: str, parents: Optional[Set[str]]) -> Set[str]:
+        return set(chain.from_iterable(map(lambda parent: Drive.matching_files(name, mimeType, parent), parents)))
 
     @staticmethod
-    def matching_items(name: str, mimeType: str, parents: List) -> List:
-        return [file_dict['id'] for parent in parents for file_dict in Drive.list_files(name, mimeType, parent)]
-
-
-    @staticmethod
-    def list_files(name: str, mimeType: str, parent: Path) -> List:
+    def matching_files(name: str, mimeType: str, parent: Optional[str]) -> Set[str]:
         query = f"name = '{name}' and mimeType = '{mimeType}' and '{parent}' in parents"
-        return Drive.files.list(q=query, fields='files(id)').execute().get('files', [])
-
+        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=query, fields='files(id)').execute().get('files', [])))
 
     @staticmethod
     def print_permissions(folder_id):
@@ -90,7 +94,36 @@ class Drive:
         for permission in permissions.get('permissions', []):
             print(f"ID: {permission['id']}, Type: {permission['type']}, Role: {permission['role']}")
 
+    @staticmethod
+    def equivalents(local_file_path: Path, drive_parent_path: Path) -> Set[str]:
+        file_ids_of_equivalents = set()
+        local_file_name = local_file_path.name
+        mimetype = magic.from_file(str(local_file_path), mime=True)
+        for file_id in Drive.matching_files_in_parents(local_file_name, mimetype, Drive.obtain_folders(drive_parent_path)):
+            if Drive.equivalent(local_file_path, file_id):
+                file_ids_of_equivalents.add(file_id)
+        return file_ids_of_equivalents
 
+    @staticmethod
+    def file_content(file_id: str) -> bytes:
+            request = Drive.service.files().get_media(fileId=file_id)
+            fh = io.BytesIO()
+            downloader = MediaIoBaseDownload(fh, request)
+            done = False
+            while not done:
+                status, done = downloader.next_chunk()
+            return fh.getvalue()
+
+    @staticmethod
+    def equivalent(local_file_path: Path, file_id: str) -> bool:
+        google_file_content = Drive.file_content(file_id)
+        with open(local_file_path, 'rb') as local_file:
+            local_file_content = local_file.read()
+        google_file_md5 = hashlib.md5(google_file_content).hexdigest()
+        local_file_md5 = hashlib.md5(local_file_content).hexdigest()
+
+        return google_file_md5 == local_file_md5
+    
 if __name__=="__main__":
     main()
 

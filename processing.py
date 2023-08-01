@@ -16,7 +16,7 @@ def limit(process: subprocess.Popen, sec_limit: float, output_path: Path):
             time.sleep(1)
             poll = process.poll()
             #python>3.8: if (poll := process.poll()) is not None:
-            if poll:
+            if poll is not None:
                 output_file.write(
                         f"Ran for {sec} sec; process poll value is {poll}"
                         )
