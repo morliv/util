@@ -3,6 +3,7 @@ import os
 import logging
 import subprocess
 from pathlib import Path
+from typing import Callable
 
 from watchdog.events import FileSystemEventHandler
 from watchdog.observers import Observer
@@ -42,4 +43,10 @@ def call_upon_file_addition(directory_to_watch, callback):
     observer.schedule(CustomEventHandler(callback), str(directory_to_watch), recursive=True)
     observer.start()
     return observer
+
+
+def recurse_on_subpaths(f: Callable[Path], dir_path: Path):
+    for subpath in dir_path.iterdir():
+        return f(dir_path)
+    
 

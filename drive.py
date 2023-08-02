@@ -37,28 +37,34 @@ class Drive:
     @staticmethod
     def sync(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[Set[str]]:
         drive_folder_ids = Drive.obtain_folders(drive_folder)
+        sync_path = partial(Drive.sync, drive_folder=drive_folder if only_contents else
+        drive_folder / file_path.name, only_contents=only_contents)
         if file_path.is_dir():
-            for subpath in file_path.iterdir():
-                Drive.sync(subpath, drive_folder if only_contents else drive_folder / file_path.name, only_contents=only_contents)
+            processing.recurse_on_subpaths(sync_path, file_path)
             return drive_folder_ids
 
         equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
         if equivalent_file_ids:
             return equivalent_file_ids
 
-        mimetype = magic.from_file(str(file_path), mime=True)
+        mimeType = magic.from_file(str(file_path), mime=True)
+        try_write_file(Metadata(file_path.name, drive_folde_ids, mimeType)
+
+    @staticmethod
+    def try_write_file(file_metadata: dict):
         try:
-            file_metadata = {
-                'name': file_path.name,
-                'parents': list(drive_folder_ids),
-            }
-            media = MediaFileUpload(str(file_path), mimetype=mimetype)
-            file_id = Drive.service.files().create(body=file_metadata,
-                                          media_body=media,
-                                          fields='id').execute().get("id")
-            return {file_id}
+            Drive.write_file(file_metadata)
         except HttpError as error:
             print(f'An error occurred: {error}')
+            
+    @staticmethod
+    def write_file(file_metadata: dict):
+        media = MediaFileUpload(str(file_path),
+        mimetype=file_metadata["mimeType"])
+        file_id = Drive.service.files().create(body=file_metadata,
+                                      media_body=media,
+                                      fields='id').execute().get("id")
+        return {file_id}
 
 
     @staticmethod
@@ -66,11 +72,7 @@ class Drive:
         path = '/' / path
         if len(path.parts) == 1:
             return ['root']
-        folder_info = {
-            'name': path.name,
-            'mimeType': 'application/vnd.google-apps.folder',
-            'parents': list(Drive.obtain_folders(path.parent))
-        }
+        folder_info = vars(Metadata(path.name, list(Drive.obtain_folders(path.parent)), 'application/vnd.google-apps.folder'))
         folder_ids = Drive.matching_files_in_parents(**folder_info)
         if folder_ids:
             print(f'Existing folder ids: {folder_ids}')
@@ -123,6 +125,13 @@ class Drive:
         local_file_md5 = hashlib.md5(local_file_content).hexdigest()
 
         return google_file_md5 == local_file_md5
+
+
+class Metadata():
+    def __init__(self, filename, parents_ids, mimeType):
+        self.filename = filename
+        self.parents_ids = list(parents_ids)
+        self.mimeType = mimeType
     
 if __name__=="__main__":
     main()
