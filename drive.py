@@ -36,19 +36,19 @@ class Drive:
     files = google_api.service('drive', 3).files()
 
     @staticmethod
-    def sync(file_path: Path, drive_folder: Path, only_contents=False) -> Optional[Set[str]]:
-        drive_folder_ids = Drive.obtain_folders(drive_folder)
-        sync_path = partial(Drive.sync, drive_folder=drive_folder if only_contents else
+    def sync(file_path: Path, drive_folder: Path, only_contents=False) -> str:
+        drive_folder_id = Drive.keep_first(Drive.obtain_folders(drive_folder))
+        sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
         drive_folder / file_path.name, only_contents=only_contents)
         if file_path.is_dir():
-            processing.recurse_on_subpaths(sync_path, file_path)
-            return drive_folder_ids
+            processing.recurse_on_subpaths(sync_parameterized, file_path)
+            return drive_folder_id
 
         equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
         if equivalent_file_ids:
-            return Drive.keep_one_equivalent(equivalent_file_ids)
+            return Drive.keep_first(equivalent_file_ids)
        
-        return Drive.try_write_file(vars(Metadata(file_path, drive_folder_ids)))
+        return Drive.try_write_file(vars(Metadata(file_path, [drive_folder_id])))
 
     @staticmethod
     def try_write_file(file_metadata: dict):
@@ -125,9 +125,8 @@ class Drive:
         return google_file_md5 == local_file_md5
 
     @staticmethod
-    def keep_one_equivalent(equivalent_file_ids: Set[str]) -> str:
-        equivalent_file_ids = list(equivalent_file_ids)
-        for equivalent_file_id in equivalent_file_ids[1:]:
+    def keep_first(file_ids: List[str]) -> str:
+        for file_id in file_ids[1:]:
             Drive.try_delete(equivalent_file_id)
         return equivalent_file_ids[0]
         
