@@ -14,6 +14,7 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
+import processing
 import google_api
 
 
@@ -45,27 +46,25 @@ class Drive:
 
         equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
         if equivalent_file_ids:
-            return equivalent_file_ids
-
-        mimeType = magic.from_file(str(file_path), mime=True)
-        try_write_file(Metadata(file_path.name, drive_folde_ids, mimeType)
+            return Drive.keep_one_equivalent(equivalent_file_ids)
+       
+        return Drive.try_write_file(vars(Metadata(file_path, drive_folder_ids)))
 
     @staticmethod
     def try_write_file(file_metadata: dict):
         try:
-            Drive.write_file(file_metadata)
+            Drive.write(file_metadata)            
         except HttpError as error:
             print(f'An error occurred: {error}')
             
     @staticmethod
     def write_file(file_metadata: dict):
         media = MediaFileUpload(str(file_path),
-        mimetype=file_metadata["mimeType"])
+        mimetype=file_metadata.mimeType)
         file_id = Drive.service.files().create(body=file_metadata,
                                       media_body=media,
                                       fields='id').execute().get("id")
         return {file_id}
-
 
     @staticmethod
     def obtain_folders(path: Path) -> Optional[Set[str]]:
@@ -108,13 +107,13 @@ class Drive:
 
     @staticmethod
     def file_content(file_id: str) -> bytes:
-            request = Drive.service.files().get_media(fileId=file_id)
-            fh = io.BytesIO()
-            downloader = MediaIoBaseDownload(fh, request)
-            done = False
-            while not done:
-                status, done = downloader.next_chunk()
-            return fh.getvalue()
+        request = Drive.service.files().get_media(fileId=file_id)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        return fh.getvalue()
 
     @staticmethod
     def equivalent(local_file_path: Path, file_id: str) -> bool:
@@ -123,15 +122,28 @@ class Drive:
             local_file_content = local_file.read()
         google_file_md5 = hashlib.md5(google_file_content).hexdigest()
         local_file_md5 = hashlib.md5(local_file_content).hexdigest()
-
         return google_file_md5 == local_file_md5
 
+    @staticmethod
+    def keep_one_equivalent(equivalent_file_ids: Set[str]) -> str:
+        equivalent_file_ids = list(equivalent_file_ids)
+        for equivalent_file_id in equivalent_file_ids[1:]:
+            Drive.try_delete(equivalent_file_id)
+        return equivalent_file_ids[0]
+        
+    @staticmethod
+    def try_delete(file_id: str):
+        try:
+           files.delete(fileId=file_id).execute() 
+        except HttpError as e:
+            print(e)
 
 class Metadata():
-    def __init__(self, filename, parents_ids, mimeType):
-        self.filename = filename
-        self.parents_ids = list(parents_ids)
-        self.mimeType = mimeType
+    def __init__(self, file_path, parent_file_ids):
+        self.filename = file_path.name
+        self.parent = list(parent_file_ids)
+        self.mimeType = magic.from_file(str(file_path), mime=True)
+
     
 if __name__=="__main__":
     main()
