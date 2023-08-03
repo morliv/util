@@ -37,7 +37,7 @@ class Drive:
 
     @staticmethod
     def sync(file_path: Path, drive_folder: Path, only_contents=False) -> str:
-        drive_folder_id = Drive.keep_first(Drive.obtain_folders(drive_folder))
+        drive_folder_id = Drive.keep_first(list(Drive.obtain_folders(drive_folder)))
         sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
         drive_folder / file_path.name, only_contents=only_contents)
         if file_path.is_dir():
@@ -46,9 +46,9 @@ class Drive:
 
         equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
         if equivalent_file_ids:
-            return Drive.keep_first(equivalent_file_ids)
+            return Drive.keep_first(list(equivalent_file_ids))
        
-        return Drive.try_write_file(vars(Metadata(file_path, [drive_folder_id])))
+        return Drive.try_write_file(vars(Metadata(file_path, [drive_folder_id], mimeType=magic.from_file(str(file_path), mime=True))))
 
     @staticmethod
     def try_write_file(file_metadata: dict):
@@ -71,7 +71,7 @@ class Drive:
         path = '/' / path
         if len(path.parts) == 1:
             return ['root']
-        folder_info = vars(Metadata(path.name, list(Drive.obtain_folders(path.parent)), 'application/vnd.google-apps.folder'))
+        folder_info = vars(Metadata(path, list(Drive.obtain_folders(path.parent))))
         folder_ids = Drive.matching_files_in_parents(**folder_info)
         if folder_ids:
             print(f'Existing folder ids: {folder_ids}')
@@ -127,8 +127,8 @@ class Drive:
     @staticmethod
     def keep_first(file_ids: List[str]) -> str:
         for file_id in file_ids[1:]:
-            Drive.try_delete(equivalent_file_id)
-        return equivalent_file_ids[0]
+            Drive.try_delete(file_id)
+        return file_ids[0]
         
     @staticmethod
     def try_delete(file_id: str):
@@ -138,11 +138,10 @@ class Drive:
             print(e)
 
 class Metadata():
-    def __init__(self, file_path, parent_file_ids):
-        self.filename = file_path.name
-        self.parent = list(parent_file_ids)
-        self.mimeType = magic.from_file(str(file_path), mime=True)
-
+    def __init__(self, file_path: Path, parent_file_ids, mimeType='application/vnd.google-apps.folder'):
+        self.name = file_path.name
+        self.parents = parent_file_ids
+        self.mimeType = mimeType  
     
 if __name__=="__main__":
     main()
