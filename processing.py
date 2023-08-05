@@ -47,6 +47,5 @@ def call_upon_file_addition(directory_to_watch, callback):
 
 def recurse_on_subpaths(f: Callable[[Path], str], dir_path: Path):
     for subpath in dir_path.iterdir():
-        return f(subpath)
-    
+        f(subpath)
 

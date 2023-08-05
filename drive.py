@@ -31,9 +31,39 @@ def parsed_args():
     return parser.parse_args()
 
 
+class Metadata:
+    def __init__(self, mimeType: str, parent_file_ids, file_path: Path):
+        self.mimeType = mimeType  
+        self.parents = list(parent_file_ids)
+        self.name = file_path.name
+
+class File:
+    def __init__(self, parent_file_ids, file_path, mimeType=None):
+        self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
+        self.parent_file_ids = parent_file_ids
+        self.file_path = file_path
+        self.metadata = Metadata(self.mimeType, self.parent_file_ids, self.file_path)
+
+    def equivalents(self) -> Set[str]:
+        file_ids_of_equivalents = set()
+        for file_id in self.matching_files_in_parents():
+            if Drive.equivalent(self.file_path, file_id):
+                file_ids_of_equivalents.add(file_id)
+        return file_ids_of_equivalents
+
+    def matching_files_in_parents(self) -> Set[str]:
+        return set(chain.from_iterable(map(lambda parent_file_id: self.matching_files(parent_file_id), self.parent_file_ids)))
+ 
+    def matching_files(self, parent_file_id: str) -> Set[str]:
+        query = f"mimeType = '{self.mimeType}' and '{parent_file_id}' in parents and name = '{self.metadata.name}'"
+        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=query, fields='files(id)').execute().get('files', [])))
+
+
 class Drive:
+    FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
+
     service = google_api.service('drive', 3)
-    files = google_api.service('drive', 3).files()
+    files = service.files()
 
     @staticmethod
     def sync(file_path: Path, drive_folder: Path, only_contents=False) -> str:
@@ -43,67 +73,46 @@ class Drive:
         if file_path.is_dir():
             processing.recurse_on_subpaths(sync_parameterized, file_path)
             return drive_folder_id
-
-        equivalent_file_ids = Drive.equivalents(file_path, drive_folder)
+    
+        file_for_drive = File({drive_folder_id}, file_path)
+        equivalent_file_ids = file_for_drive.equivalents()
+        for file_id in file_for_drive.matching_files(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
         if equivalent_file_ids:
             return Drive.keep_first(list(equivalent_file_ids))
-       
-        return Drive.try_write_file(vars(Metadata(file_path, [drive_folder_id], mimeType=magic.from_file(str(file_path), mime=True))))
+        return Drive.try_write(file_for_drive)
 
     @staticmethod
-    def try_write_file(file_metadata: dict):
+    def try_write(file_for_drive: File) -> str:
         try:
-            Drive.write(file_metadata)            
+            Drive.write(file_for_drive)            
         except HttpError as error:
             print(f'An error occurred: {error}')
             
     @staticmethod
-    def write_file(file_metadata: dict):
-        media = MediaFileUpload(str(file_path),
-        mimetype=file_metadata.mimeType)
-        file_id = Drive.service.files().create(body=file_metadata,
+    def write(file_for_drive: File) -> str:
+        media = MediaFileUpload(str(file_for_drive.file_path),
+        mimetype=file_for_drive.mimeType)
+        file_id = Drive.service.files().create(body=file_for_drive.metadata,
                                       media_body=media,
                                       fields='id').execute().get("id")
-        return {file_id}
+        return file_id
 
     @staticmethod
     def obtain_folders(path: Path) -> Optional[Set[str]]:
         path = '/' / path
         if len(path.parts) == 1:
-            return ['root']
-        folder_info = vars(Metadata(path, list(Drive.obtain_folders(path.parent))))
-        folder_ids = Drive.matching_files_in_parents(**folder_info)
-        if folder_ids:
-            print(f'Existing folder ids: {folder_ids}')
-        else:
-            folder_ids = [Drive.files.create(body=folder_info, fields='id').execute()['id']]
-            print(f'Folder created, id: {folder_ids[0]}')
+            return {'root'}
+        folder = File(list(Drive.obtain_folders(path.parent)), path, Drive.FOLDER_MIMETYPE)
+        folder_ids = folder.matching_files_in_parents()
+        if not folder_ids:
+            folder_ids = [Drive.files.create(body=vars(folder_metadata), fields='id').execute()['id']]
         return folder_ids
-
-    @staticmethod
-    def matching_files_in_parents(name: str, mimeType: str, parents: Optional[Set[str]]) -> Set[str]:
-        return set(chain.from_iterable(map(lambda parent: Drive.matching_files(name, mimeType, parent), parents)))
-
-    @staticmethod
-    def matching_files(name: str, mimeType: str, parent: Optional[str]) -> Set[str]:
-        query = f"name = '{name}' and mimeType = '{mimeType}' and '{parent}' in parents"
-        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=query, fields='files(id)').execute().get('files', [])))
 
     @staticmethod
     def print_permissions(folder_id):
         permissions = Drive.service.permissions().list(fileId=folder_id).execute()
         for permission in permissions.get('permissions', []):
             print(f"ID: {permission['id']}, Type: {permission['type']}, Role: {permission['role']}")
-
-    @staticmethod
-    def equivalents(local_file_path: Path, drive_parent_path: Path) -> Set[str]:
-        file_ids_of_equivalents = set()
-        local_file_name = local_file_path.name
-        mimetype = magic.from_file(str(local_file_path), mime=True)
-        for file_id in Drive.matching_files_in_parents(local_file_name, mimetype, Drive.obtain_folders(drive_parent_path)):
-            if Drive.equivalent(local_file_path, file_id):
-                file_ids_of_equivalents.add(file_id)
-        return file_ids_of_equivalents
 
     @staticmethod
     def file_content(file_id: str) -> bytes:
@@ -133,15 +142,10 @@ class Drive:
     @staticmethod
     def try_delete(file_id: str):
         try:
-           files.delete(fileId=file_id).execute() 
+           Drive.files.delete(fileId=file_id).execute() 
         except HttpError as e:
             print(e)
 
-class Metadata():
-    def __init__(self, file_path: Path, parent_file_ids, mimeType='application/vnd.google-apps.folder'):
-        self.name = file_path.name
-        self.parents = parent_file_ids
-        self.mimeType = mimeType  
     
 if __name__=="__main__":
     main()
