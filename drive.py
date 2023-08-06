@@ -9,8 +9,6 @@ from itertools import chain
 from functools import partial
 
 import magic
-import google.auth
-from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -31,11 +29,22 @@ def parsed_args():
     return parser.parse_args()
 
 
+@dataclass
 class Metadata:
-    def __init__(self, mimeType: str, parent_file_ids, file_path: Path):
-        self.mimeType = mimeType  
-        self.parents = list(parent_file_ids)
-        self.name = file_path.name
+    mimeType: str
+    parents: List[str]
+    name: str
+
+    def __post_init__(self):
+        self.parents = list(self.parents)
+
+
+@dataclass
+class QueryClause:
+    key: str
+    val: str
+    op: str = '='
+
 
 class File:
     def __init__(self, parent_file_ids, file_path, mimeType=None):
@@ -53,10 +62,14 @@ class File:
 
     def matching_files_in_parents(self) -> Set[str]:
         return set(chain.from_iterable(map(lambda parent_file_id: self.matching_files(parent_file_id), self.parent_file_ids)))
- 
+
     def matching_files(self, parent_file_id: str) -> Set[str]:
-        query = f"mimeType = '{self.mimeType}' and '{parent_file_id}' in parents and name = '{self.metadata.name}'"
+        query = [QueryClause(
         return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=query, fields='files(id)').execute().get('files', [])))
+
+    @staticmethod
+    def matching_files_query(self):
+        return Drive.query([QueryClause("mimeT
 
 
 class Drive:
@@ -73,7 +86,7 @@ class Drive:
         if file_path.is_dir():
             processing.recurse_on_subpaths(sync_parameterized, file_path)
             return drive_folder_id
-    
+
         file_for_drive = File({drive_folder_id}, file_path)
         equivalent_file_ids = file_for_drive.equivalents()
         for file_id in file_for_drive.matching_files(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
@@ -87,12 +100,12 @@ class Drive:
             Drive.write(file_for_drive)            
         except HttpError as error:
             print(f'An error occurred: {error}')
-            
+
     @staticmethod
     def write(file_for_drive: File) -> str:
         media = MediaFileUpload(str(file_for_drive.file_path),
         mimetype=file_for_drive.mimeType)
-        file_id = Drive.service.files().create(body=file_for_drive.metadata,
+        file_id = Drive.files.create(body=vars(file_for_drive.metadata),
                                       media_body=media,
                                       fields='id').execute().get("id")
         return file_id
@@ -105,7 +118,7 @@ class Drive:
         folder = File(list(Drive.obtain_folders(path.parent)), path, Drive.FOLDER_MIMETYPE)
         folder_ids = folder.matching_files_in_parents()
         if not folder_ids:
-            folder_ids = [Drive.files.create(body=vars(folder_metadata), fields='id').execute()['id']]
+            folder_ids = [Drive.files.create(body=vars(folder.metadata), fields='id').execute()['id']]
         return folder_ids
 
     @staticmethod
@@ -138,7 +151,7 @@ class Drive:
         for file_id in file_ids[1:]:
             Drive.try_delete(file_id)
         return file_ids[0]
-        
+ 
     @staticmethod
     def try_delete(file_id: str):
         try:
@@ -146,7 +159,10 @@ class Drive:
         except HttpError as e:
             print(e)
 
-    
+    @staticmethod
+    def query(clauses: List[QueryClause], logic_op='and'):
+        return f' {logic_op} '.join([' '.join(vars(clause).values()) in clauses])
+
 if __name__=="__main__":
     main()
 
