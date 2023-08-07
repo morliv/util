@@ -5,6 +5,7 @@ import io
 import hashlib
 from pathlib import Path
 from typing import Optional, List, Set
+from dataclasses import dataclass
 from itertools import chain
 from functools import partial
 
@@ -38,12 +39,31 @@ class Metadata:
     def __post_init__(self):
         self.parents = list(self.parents)
 
+    def query(self, parent_file_id):
+        query_dict = vars(self)
+        query_dict['parents'] = parent_file_id
+        return Query.from_dict(query_dict)
 
-@dataclass
-class QueryClause:
-    key: str
-    val: str
-    op: str = '='
+
+class Query:
+    class Clause:
+        def __init__(self, key, val, op='='):
+            self.key: str = str(key) 
+            self.val: str = str(val)
+            self.op: str = 'in' if key == 'parent_file_id' else str(op)
+
+        def string(self):
+            if self.key == 'parent_file_id':
+                return f"'{self.val}' {self.op} {self.key}"
+            return f"{self.key} {self.op} '{self.val}'"
+
+    @staticmethod  
+    def from_dict(dictionary: dict):
+        return Query.query([Query.Clause(key, value) for key, value in dictionary.items()])
+
+    @staticmethod
+    def query(clauses: List[Clause], logic_op='and'):
+        return f' {logic_op} '.join([clause.string() for clause in clauses])
 
 
 class File:
@@ -51,7 +71,7 @@ class File:
         self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
         self.parent_file_ids = parent_file_ids
         self.file_path = file_path
-        self.metadata = Metadata(self.mimeType, self.parent_file_ids, self.file_path)
+        self.metadata = Metadata(self.mimeType, self.parent_file_ids, self.file_path.name)
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()
@@ -64,12 +84,7 @@ class File:
         return set(chain.from_iterable(map(lambda parent_file_id: self.matching_files(parent_file_id), self.parent_file_ids)))
 
     def matching_files(self, parent_file_id: str) -> Set[str]:
-        query = [QueryClause(
-        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=query, fields='files(id)').execute().get('files', [])))
-
-    @staticmethod
-    def matching_files_query(self):
-        return Drive.query([QueryClause("mimeT
+        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=self.metadata.query(parent_file_id), fields='files(id)').execute().get('files', [])))
 
 
 class Drive:
@@ -159,9 +174,6 @@ class Drive:
         except HttpError as e:
             print(e)
 
-    @staticmethod
-    def query(clauses: List[QueryClause], logic_op='and'):
-        return f' {logic_op} '.join([' '.join(vars(clause).values()) in clauses])
 
 if __name__=="__main__":
     main()
