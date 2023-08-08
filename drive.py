@@ -44,6 +44,12 @@ class Metadata:
         query_dict['parents'] = parent_file_id
         return Query.from_dict(query_dict)
 
+    def matches_in_parents(self) -> Set[str]:
+        return set(chain.from_iterable(map(lambda parent_file_id: self.matches(parent_file_id), self.parents)))
+
+    def matches(self, parent_file_id: str) -> Set[str]:
+        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=self.query(parent_file_id), fields='files(id)').execute().get('files', [])))
+
 
 class Query:
     class Clause:
@@ -75,16 +81,10 @@ class File:
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()
-        for file_id in self.matching_files_in_parents():
+        for file_id in self.metadata.matches_in_parents():
             if Drive.equivalent(self.file_path, file_id):
                 file_ids_of_equivalents.add(file_id)
         return file_ids_of_equivalents
-
-    def matching_files_in_parents(self) -> Set[str]:
-        return set(chain.from_iterable(map(lambda parent_file_id: self.matching_files(parent_file_id), self.parent_file_ids)))
-
-    def matching_files(self, parent_file_id: str) -> Set[str]:
-        return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=self.metadata.query(parent_file_id), fields='files(id)').execute().get('files', [])))
 
 
 class Drive:
@@ -104,7 +104,7 @@ class Drive:
 
         file_for_drive = File({drive_folder_id}, file_path)
         equivalent_file_ids = file_for_drive.equivalents()
-        for file_id in file_for_drive.matching_files(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
+        for file_id in file_for_drive.metadata.matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
         if equivalent_file_ids:
             return Drive.keep_first(list(equivalent_file_ids))
         return Drive.try_write(file_for_drive)
@@ -131,7 +131,7 @@ class Drive:
         if len(path.parts) == 1:
             return {'root'}
         folder = File(list(Drive.obtain_folders(path.parent)), path, Drive.FOLDER_MIMETYPE)
-        folder_ids = folder.matching_files_in_parents()
+        folder_ids = folder.metadata.matches_in_parents()
         if not folder_ids:
             folder_ids = [Drive.files.create(body=vars(folder.metadata), fields='id').execute()['id']]
         return folder_ids
