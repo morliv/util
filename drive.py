@@ -32,17 +32,19 @@ def parsed_args():
 
 @dataclass
 class Metadata:
-    mimeType: str
-    parents: List[str]
-    name: str
+    mimeType: Optional[str] = None
+    parents: Optional[List[str]] = None
+    name: Optional[str] = None
 
     def __post_init__(self):
-        self.parents = list(self.parents)
+        if self.parents is not None:
+            self.parents = list(self.parents)
+        for key, value in list(vars(self).items()):
+            if value is None:
+                delattr(self, key)
 
     def query(self, parent_file_id):
-        query_dict = vars(self)
-        query_dict['parents'] = parent_file_id
-        return Query.from_dict(query_dict)
+        return Query.from_dict(dict(vars(self), parents=parent_file_id))
 
     def matches_in_parents(self) -> Set[str]:
         return set(chain.from_iterable(map(lambda parent_file_id: self.matches(parent_file_id), self.parents)))
@@ -53,13 +55,15 @@ class Metadata:
 
 class Query:
     class Clause:
+        IN_KEYS = ['parents']
+
         def __init__(self, key, val, op='='):
             self.key: str = str(key) 
             self.val: str = str(val)
-            self.op: str = 'in' if key == 'parent_file_id' else str(op)
+            self.op: str = 'in' if key in Query.Clause.IN_KEYS else str(op)
 
         def string(self):
-            if self.key == 'parent_file_id':
+            if self.key in Query.Clause.IN_KEYS: 
                 return f"'{self.val}' {self.op} {self.key}"
             return f"{self.key} {self.op} '{self.val}'"
 
@@ -104,7 +108,7 @@ class Drive:
 
         file_for_drive = File({drive_folder_id}, file_path)
         equivalent_file_ids = file_for_drive.equivalents()
-        for file_id in file_for_drive.metadata.matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
+        for file_id in Metadata(name=file_path.name, parents=file_for_drive.parent_file_ids).matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
         if equivalent_file_ids:
             return Drive.keep_first(list(equivalent_file_ids))
         return Drive.try_write(file_for_drive)
@@ -173,6 +177,39 @@ class Drive:
            Drive.files.delete(fileId=file_id).execute() 
         except HttpError as e:
             print(e)
+
+    @staticmethod
+    def get_metadata_for_files(file_ids: List[str]) -> List[dict]:
+        metadata_list = []
+        for file_id in file_ids:
+            try:
+                metadata = Drive.files.get(fileId=file_id, fields='id, name, mimeType, parents').execute()
+                metadata_list.append(metadata)
+            except HttpError as e:
+                print(f"Failed to fetch metadata for file ID: {file_id}. Error: {e}")
+        return metadata_list
+
+    @staticmethod
+    def count_files_in_folder(drive_folder: Path) -> int:
+        for folder_id in Drive.obtain_folders(drive_folder):
+            print(folder_id, Drive.count_files_in_folder_by_id(folder_id))
+
+    @staticmethod
+    def count_files_in_folder_by_id(folder_id: str) -> int:
+        query = f"'{folder_id}' in parents"
+        file_count = 0
+        page_token = None
+        while True:
+            try:
+                response = Drive.files.list(q=query, pageSize=1000, fields='files(id),nextPageToken', pageToken=page_token).execute()
+                file_count += len(response.get('files', []))
+                page_token = response.get('nextPageToken', None)
+                if page_token is None:
+                    break
+            except HttpError as e:
+                print(f"Error fetching files for folder ID {folder_id}. Error: {e}")
+                return 0
+        return file_count
 
 
 if __name__=="__main__":
