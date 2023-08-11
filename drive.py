@@ -190,27 +190,38 @@ class Drive:
         return metadata_list
 
     @staticmethod
-    def count_files_in_folder(drive_folder: Path) -> int:
-        for folder_id in Drive.obtain_folders(drive_folder):
-            print(folder_id, Drive.count_files_in_folder_by_id(folder_id))
+    def print_files_of_matching_folders(drive_folder_path: Path):
+        for folder_id in Drive.obtain_folders(drive_folder_path):
+            print(folder_id)
+            Drive.print_file_names(Drive.list_file_names_in_folder_by_id(folder_id))
 
     @staticmethod
-    def count_files_in_folder_by_id(folder_id: str) -> int:
+    def list_files_in_folder_by_id(folder_id: str, fields: str = 'files(id)') -> List[dict]:
         query = f"'{folder_id}' in parents"
-        file_count = 0
+        files = []
         page_token = None
         while True:
             try:
-                response = Drive.files.list(q=query, pageSize=1000, fields='files(id),nextPageToken', pageToken=page_token).execute()
-                file_count += len(response.get('files', []))
+                response = Drive.files.list(q=query, pageSize=1000, fields=fields + ',nextPageToken', pageToken=page_token).execute()
+                files += response.get('files', [])
                 page_token = response.get('nextPageToken', None)
                 if page_token is None:
                     break
             except HttpError as e:
                 print(f"Error fetching files for folder ID {folder_id}. Error: {e}")
-                return 0
-        return file_count
+                return []
+        return files
 
+    @staticmethod
+    def list_file_names_in_folder_by_id(folder_id: str) -> List[str]:
+        files = Drive.list_files_in_folder_by_id(folder_id, 'files(name)')
+        return [file['name'] for file in files]
+
+    @staticmethod
+    def print_file_names(file_names: List[str]) -> None:
+        print("Files in the folder:")
+        for name in sorted(file_names):
+            print(name)
 
 if __name__=="__main__":
     main()
