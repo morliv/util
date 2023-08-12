@@ -19,7 +19,11 @@ import google_api
 
 def main():
     args = parsed_args()
-    Drive.sync(Path(args.local_path).expanduser(), Path(args.drive_folder), args.only_contents)
+    drive_folder_path = Path(args.drive_folder)
+    if args.list_files:
+        Drive.files_of_matching_folders(drive_folder_path)
+    else:
+        Drive.sync(Path(args.local_path).expanduser(), drive_folder_path, args.only_contents)
 
 
 def parsed_args():
@@ -27,6 +31,7 @@ def parsed_args():
     parser.add_argument('-l', '--local_path', type=str)
     parser.add_argument('-d', '--drive_folder', type=str)
     parser.add_argument('-o', '--only_contents', action='store_true')
+    parser.add_argument('-f', '--list-files', action='store_true')
     return parser.parse_args()
 
 
@@ -190,10 +195,14 @@ class Drive:
         return metadata_list
 
     @staticmethod
-    def print_files_of_matching_folders(drive_folder_path: Path):
+    def files_of_matching_folders(drive_folder_path: Path):
+        drive_folder_path = Path(drive_folder_path)
+        file_lists = {}
         for folder_id in Drive.obtain_folders(drive_folder_path):
             print(folder_id)
-            Drive.print_file_names(Drive.list_file_names_in_folder_by_id(folder_id))
+            file_lists[folder_id] = sorted(Drive.list_file_names_in_folder_by_id(folder_id))
+            Drive.print_file_names(file_lists[folder_id])
+        return file_lists
 
     @staticmethod
     def list_files_in_folder_by_id(folder_id: str, fields: str = 'files(id)') -> List[dict]:
@@ -220,7 +229,7 @@ class Drive:
     @staticmethod
     def print_file_names(file_names: List[str]) -> None:
         print("Files in the folder:")
-        for name in sorted(file_names):
+        for name in file_names:
             print(name)
 
 if __name__=="__main__":
