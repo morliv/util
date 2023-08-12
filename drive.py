@@ -100,9 +100,9 @@ class Drive:
     @staticmethod
     def sync(file_path: Path, drive_folder: Path, only_contents=False) -> str:
         drive_folder_id = Drive.keep_first(list(Drive.obtain_folders(drive_folder)))
-        sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
-        drive_folder / file_path.name, only_contents=only_contents)
         if file_path.is_dir():
+            sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
+            drive_folder / file_path.name, only_contents=only_contents)
             processing.recurse_on_subpaths(sync_parameterized, file_path)
             return drive_folder_id
 
