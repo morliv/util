@@ -21,7 +21,7 @@ def main():
     args = parsed_args()
     drive_folder_path = Path(args.drive_folder)
     if args.list_files:
-        Drive.files_of_matching_folders(drive_folder_path)
+        Drive.files_in(drive_folder_path)
     else:
         Drive.sync(Path(args.local_path).expanduser(), drive_folder_path, args.only_contents)
 
@@ -136,7 +136,7 @@ class Drive:
 
     @staticmethod
     def obtain_folders(path: Path) -> Optional[Set[str]]:
-        path = '/' / path
+        path = '/' / Path(path)
         if len(path.parts) == 1:
             return {'root'}
         folder = File(list(Drive.obtain_folders(path.parent)), path, Drive.FOLDER_MIMETYPE)
@@ -195,7 +195,7 @@ class Drive:
         return metadata_list
 
     @staticmethod
-    def files_of_matching_folders(drive_folder_path: Path):
+    def files_in(drive_folder_path: Path):
         drive_folder_path = Path(drive_folder_path)
         file_lists = {}
         for folder_id in Drive.obtain_folders(drive_folder_path):
@@ -205,7 +205,7 @@ class Drive:
         return file_lists
 
     @staticmethod
-    def list_files_in_folder_by_id(folder_id: str, fields: str = 'files(id)') -> List[dict]:
+    def files_in_by_id(folder_id: str, fields: str = 'files(id)') -> List[dict]:
         query = f"'{folder_id}' in parents"
         files = []
         page_token = None
@@ -223,7 +223,7 @@ class Drive:
 
     @staticmethod
     def list_file_names_in_folder_by_id(folder_id: str) -> List[str]:
-        files = Drive.list_files_in_folder_by_id(folder_id, 'files(name)')
+        files = Drive.files_in_by_id(folder_id, 'files(name)')
         return [file['name'] for file in files]
 
     @staticmethod
