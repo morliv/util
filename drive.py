@@ -106,17 +106,25 @@ class Drive:
     def sync(file_path: Path, drive_folder: Path, only_contents=False) -> str:
         drive_folder_id = Drive.keep_first(list(Drive.obtain_folders(drive_folder)))
         if file_path.is_dir():
-            sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
-            drive_folder / file_path.name, only_contents=only_contents)
-            processing.recurse_on_subpaths(sync_parameterized, file_path)
+            Drive.sync_subdirs(*args, **kwargs)
             return drive_folder_id
+        return sync_file(*args)
 
+    @staticmethod
+    def sync_subdirs(file_path: Path, drive_folder: Path, only_contents):
+        sync_parameterized = partial(Drive.sync, drive_folder=drive_folder if only_contents else
+        drive_folder / file_path.name, only_contents=only_contents)
+        processing.recurse_on_subpaths(sync_parameterized, file_path)
+
+    @staticmethod
+    def sync_file(file_path: Path, drive_folder: Path):
         file_for_drive = File({drive_folder_id}, file_path)
         equivalent_file_ids = file_for_drive.equivalents()
         for file_id in Metadata(name=file_path.name, parents=file_for_drive.parent_file_ids).matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
         if equivalent_file_ids:
             return Drive.keep_first(list(equivalent_file_ids))
         return Drive.try_write(file_for_drive)
+
 
     @staticmethod
     def try_write(file_for_drive: File) -> str:
