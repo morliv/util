@@ -20,8 +20,9 @@ class TestDrive(unittest.TestCase):
         self.test_dir.cleanup()
 
 
-    def test_sync(self, only_contents):
+    def sync_test(self, only_contents):
         with self.subTest(only_contents=only_contents):
+            only_contents_string = 'only the contents' if only_contents else 'with the directory containg the file'
             drive_folder_name = f"Test {only_contents_string}"
             drive_folder_id = drive.Drive.sync(Path(self.test_path),
                 Path(drive_folder_name), only_contents=only_contents)
@@ -34,8 +35,7 @@ class TestDrive(unittest.TestCase):
         
     def test_syncs(self):
         for only_contents in [False, True]:
-            only_contents_string = 'only the contents' if only_contents else 'with the directory containg the file'
-            self.test_sync(self, only_contents)
+            self.sync_test(only_contents)
 
     def test_multiple_files(self):
         pass
