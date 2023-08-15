@@ -37,6 +37,7 @@ def parsed_args():
 
 @dataclass
 class Metadata:
+    driveId: Optional[str] = None
     mimeType: Optional[str] = None
     parents: Optional[List[str]] = None
     name: Optional[str] = None
@@ -82,11 +83,11 @@ class Query:
 
 
 class File:
-    def __init__(self, parent_file_ids, file_path, mimeType=None):
-        self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
-        self.parent_file_ids = parent_file_ids
+    def __init__(self, file_path, mimeType=None, drive_id=None,
+    parent_file_ids=None):
         self.file_path = file_path
-        self.metadata = Metadata(self.mimeType, self.parent_file_ids, self.file_path.name)
+        self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
+        self.metadata = Metadata(driveId=drive_id, mimeType=self.mimeType, self.parent_file_ids, self.file_path.name)
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()
@@ -108,7 +109,7 @@ class Drive:
         if file_path.is_dir():
             Drive.sync_subdirs(file_path, drive_folder, only_contents)
             return drive_folder_id
-        return Drive.sync_file(file_path, drive_folder, only_contents)
+        return Drive.sync_file(file_path, drive_folder_id)
 
     @staticmethod
     def sync_subdirs(file_path: Path, drive_folder: Path, only_contents):
@@ -117,7 +118,7 @@ class Drive:
         processing.recurse_on_subpaths(sync_parameterized, file_path)
 
     @staticmethod
-    def sync_file(file_path: Path, drive_folder: Path) -> str:
+    def sync_file(file_path: Path, drive_folder_id: str) -> str:
         file_for_drive = File({drive_folder_id}, file_path)
         equivalent_file_ids = file_for_drive.equivalents()
         for file_id in Metadata(name=file_path.name, parents=file_for_drive.parent_file_ids).matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
@@ -238,7 +239,17 @@ class Drive:
         print("Files in the folder:")
         for name in file_names:
             print(name)
-
+        
+    @staticmethod
+    def try_get(file_id: str) -> dict:
+        try:
+            return Drive.files.get(file_id)
+        except HttpError as e:
+            if error.resp.status == 404:
+                return None
+            else:
+                print(e)
+            
 if __name__=="__main__":
     main()
 
