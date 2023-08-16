@@ -35,16 +35,13 @@ def parsed_args():
     return parser.parse_args()
 
 
-@dataclass
 class Metadata:
-    driveId: Optional[str] = None
-    mimeType: Optional[str] = None
-    parents: Optional[List[str]] = None
-    name: Optional[str] = None
-
-    def __post_init__(self):
-        if self.parents is not None:
-            self.parents = list(self.parents)
+    def __init__(self, driveId: Optional[str] = None, mimeType: Optional[str] = None,
+             parents: Optional[List[str]] = None, name: Optional[str] = None):
+        self.drive_id = driveId
+        self.mimeType = mimeType
+        self.parents = None if parents is None else list(parents)
+        self.name = name
         for key, value in list(vars(self).items()):
             if value is None:
                 delattr(self, key)
@@ -83,11 +80,11 @@ class Query:
 
 
 class File:
-    def __init__(self, file_path, mimeType=None, drive_id=None,
-    parent_file_ids=None):
+    def __init__(self, file_path: Path, mimeType: str=None, drive_id: str=None,
+    parent_file_ids: list=None):
         self.file_path = file_path
         self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
-        self.metadata = Metadata(driveId=drive_id, mimeType=self.mimeType, self.parent_file_ids, self.file_path.name)
+        self.metadata = Metadata(drive_id, self.mimeType, parent_file_ids, self.file_path.name)
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()
@@ -119,7 +116,7 @@ class Drive:
 
     @staticmethod
     def sync_file(file_path: Path, drive_folder_id: str) -> str:
-        file_for_drive = File({drive_folder_id}, file_path)
+        file_for_drive = File(file_path, [drive_folder_id])
         equivalent_file_ids = file_for_drive.equivalents()
         for file_id in Metadata(name=file_path.name, parents=file_for_drive.parent_file_ids).matches(drive_folder_id) - equivalent_file_ids: Drive.try_delete(file_id)
         if equivalent_file_ids:
@@ -147,7 +144,7 @@ class Drive:
         path = '/' / Path(path)
         if len(path.parts) == 1:
             return {'root'}
-        folder = File(list(Drive.obtain_folders(path.parent)), path, Drive.FOLDER_MIMETYPE)
+        folder = File(path, Drive.FOLDER_MIMETYPE, parent_file_ids=list(Drive.obtain_folders(path.parent)))
         folder_ids = folder.metadata.matches_in_parents()
         if not folder_ids:
             folder_ids = [Drive.files.create(body=vars(folder.metadata), fields='id').execute()['id']]
@@ -245,7 +242,7 @@ class Drive:
         try:
             return Drive.files.get(file_id)
         except HttpError as e:
-            if error.resp.status == 404:
+            if e.resp.status == 404:
                 return None
             else:
                 print(e)

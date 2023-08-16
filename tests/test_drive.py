@@ -4,25 +4,30 @@ import drive
 import unittest
 from pathlib import Path
 import tempfile
-
+import pdb
+import sys
+import traceback
 
 class TestCRUD(unittest.TestCase):
 
-    def setUp(self, file):
-        with tempfile.TemporaryFile(mode='w+t') as file:
-            drive_file = Drive.File(['root'], file.name)
-            self.file_id = Drive.try_write(drive_file)
+    def setUp(self):
+        with tempfile.NamedTemporaryFile(mode='w+t') as file:
+            file.write('Content')
+            file.flush()
+            drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
+            breakpoint()
+            self.file_id = drive.Drive.try_write(drive_file)
     
     def tearDown(self):
         print('Delete from drive if failures')
 
     def test_write(self):
-        self.assertEqual(type(Drive.try_get(self.file_id)), dict)  
-        Drive.try_delete(self.file_id)
+        self.assertEqual(type(drive.Drive.try_get(self.file_id)), dict)  
+        drive.Drive.try_delete(self.file_id)
 
     def test_delete(self):
-        Drive.try_delete(self.file_id)
-        self.assertIsNone(Drive.try_get(self.file_id))
+        drive.Drive.try_delete(self.file_id)
+        self.assertIsNone(drive.Drive.try_get(self.file_id))
 
 
 class TestSync(unittest.TestCase):
@@ -42,6 +47,7 @@ class TestSync(unittest.TestCase):
         with self.subTest(only_contents=only_contents):
             only_contents_string = 'only the contents' if only_contents else 'with the directory containg the file'
             drive_folder_name = f"Test {only_contents_string}"
+            breakpoint()
             drive_folder_id = drive.Drive.sync(Path(self.test_path),
                 Path(drive_folder_name), only_contents=only_contents)
             manual_check = input(f"Did a folder with name {drive_folder_name} appear in root " +
@@ -60,5 +66,10 @@ class TestSync(unittest.TestCase):
         
 
 if __name__ == '__main__':
-    unittest.main()
+    try:
+       TestCRUD('test_write').debug() 
+    except Exception:
+        extype, value, tb = sys.exc_info()
+        traceback.print_exc()
+        pdb.post_mortem(tb)
 
