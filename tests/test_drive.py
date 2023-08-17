@@ -15,20 +15,20 @@ class TestCRUD(unittest.TestCase):
             file.write('Content')
             file.flush()
             drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
-            breakpoint()
             self.file_id = drive.Drive.try_write(drive_file)
     
-    def tearDown(self):
-        print('Delete from drive if failures')
-
     def test_write(self):
-        self.assertEqual(type(drive.Drive.try_get(self.file_id)), dict)  
+        self.assertTrue(drive.Drive.try_get(self.file_id))
         drive.Drive.try_delete(self.file_id)
 
     def test_delete(self):
         drive.Drive.try_delete(self.file_id)
         self.assertIsNone(drive.Drive.try_get(self.file_id))
 
+    def run(self, result=None):
+        super().run(result)
+        if len(result.failures) + len(result.errors) > 0:
+            print("Delete and empty from trash any files created in Drive")
 
 class TestSync(unittest.TestCase):
     
@@ -47,7 +47,6 @@ class TestSync(unittest.TestCase):
         with self.subTest(only_contents=only_contents):
             only_contents_string = 'only the contents' if only_contents else 'with the directory containg the file'
             drive_folder_name = f"Test {only_contents_string}"
-            breakpoint()
             drive_folder_id = drive.Drive.sync(Path(self.test_path),
                 Path(drive_folder_name), only_contents=only_contents)
             manual_check = input(f"Did a folder with name {drive_folder_name} appear in root " +
@@ -67,7 +66,7 @@ class TestSync(unittest.TestCase):
 
 if __name__ == '__main__':
     try:
-       TestCRUD('test_write').debug() 
+        unittest.main()
     except Exception:
         extype, value, tb = sys.exc_info()
         traceback.print_exc()

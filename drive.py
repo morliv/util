@@ -38,7 +38,7 @@ def parsed_args():
 class Metadata:
     def __init__(self, driveId: Optional[str] = None, mimeType: Optional[str] = None,
              parents: Optional[List[str]] = None, name: Optional[str] = None):
-        self.drive_id = driveId
+        self.driveId = driveId
         self.mimeType = mimeType
         self.parents = None if parents is None else list(parents)
         self.name = name
@@ -50,7 +50,7 @@ class Metadata:
         return Query.from_dict(dict(vars(self), parents=parent_file_id))
 
     def matches_in_parents(self) -> Set[str]:
-        return set(chain.from_iterable(map(lambda parent_file_id: self.matches(parent_file_id), self.parents)))
+        return set(chain.from_iterable(map(lambda parent_file_id: self.matches(parent_file_id), self.parents))) if hasattr(self, 'parents') and self.parents else set()
 
     def matches(self, parent_file_id: str) -> Set[str]:
         return set(map(lambda id_dict: id_dict['id'], Drive.files.list(q=self.query(parent_file_id), fields='files(id)').execute().get('files', [])))
@@ -80,11 +80,10 @@ class Query:
 
 
 class File:
-    def __init__(self, file_path: Path, mimeType: str=None, drive_id: str=None,
-    parent_file_ids: list=None):
+    def __init__(self, file_path: Path, mimeType: str=None, file_id: str=None, parent_file_ids: list=None):
         self.file_path = file_path
         self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
-        self.metadata = Metadata(drive_id, self.mimeType, parent_file_ids, self.file_path.name)
+        self.metadata = Metadata(file_id, self.mimeType, parent_file_ids, self.file_path.name)
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()
@@ -126,7 +125,7 @@ class Drive:
     @staticmethod
     def try_write(file_for_drive: File) -> str:
         try:
-            Drive.write(file_for_drive)            
+            return Drive.write(file_for_drive)            
         except HttpError as error:
             print(f'An error occurred: {error}')
 
@@ -238,14 +237,14 @@ class Drive:
             print(name)
         
     @staticmethod
-    def try_get(file_id: str) -> dict:
+    def try_get(file_id: str) -> bool:
         try:
-            return Drive.files.get(file_id)
+            Drive.files.get(fileId=file_id).execute()
+            return True
         except HttpError as e:
             if e.resp.status == 404:
-                return None
-            else:
-                print(e)
+                return False
+            raise
             
 if __name__=="__main__":
     main()
