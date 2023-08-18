@@ -237,7 +237,7 @@ class Drive:
             print(name)
         
     @staticmethod
-    def try_get(file_id: str) -> bool:
+    def exists(file_id: str) -> bool:
         try:
             Drive.files.get(fileId=file_id).execute()
             return True

@@ -8,6 +8,7 @@ import pdb
 import sys
 import traceback
 
+
 class TestCRUD(unittest.TestCase):
 
     def setUp(self):
@@ -18,27 +19,29 @@ class TestCRUD(unittest.TestCase):
             self.file_id = drive.Drive.try_write(drive_file)
     
     def test_write(self):
-        self.assertTrue(drive.Drive.try_get(self.file_id))
-        drive.Drive.try_delete(self.file_id)
+        self.assertTrue(drive.Drive.exists(self.file_id))
+        self.delete_in_test()
 
     def test_delete(self):
-        drive.Drive.try_delete(self.file_id)
-        self.assertIsNone(drive.Drive.try_get(self.file_id))
+        self.delete_in_test()
+        self.assertFalse(drive.Drive.exists(self.file_id))
 
-    def run(self, result=None):
-        super().run(result)
-        if len(result.failures) + len(result.errors) > 0:
+    def delete_in_test(self):
+        try:
+            drive.Drive.try_delete(self.file_id)
+        except AssertionError:
             print("Delete and empty from trash any files created in Drive")
+            raise
+
 
 class TestSync(unittest.TestCase):
     
     def setUp(self):
         self.test_dir = tempfile.TemporaryDirectory()
         self.test_path = Path(self.test_dir.name)
-
         self.test_file_path = self.test_path / 'testfile.txt'
         with open(self.test_file_path, 'w') as file:
-            file.write('Test sentence')
+            file.write('Content')
     
     def tearDown(self):
         self.test_dir.cleanup()
@@ -63,10 +66,9 @@ class TestSync(unittest.TestCase):
             continue
 
         
-
 if __name__ == '__main__':
     try:
-        unittest.main()
+        TestCRUD('test_write').debug()
     except Exception:
         extype, value, tb = sys.exc_info()
         traceback.print_exc()
