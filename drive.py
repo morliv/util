@@ -236,16 +236,7 @@ class Drive:
         for name in file_names:
             print(name)
         
-    @staticmethod
-    def exists(file_id: str) -> bool:
-        try:
-            Drive.files.get(fileId=file_id).execute()
-            return True
-        except HttpError as e:
-            if e.resp.status == 404:
-                return False
-            raise
-            
+
 if __name__=="__main__":
     main()
 

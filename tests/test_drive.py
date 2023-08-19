@@ -18,9 +18,18 @@ class TestCRUD(unittest.TestCase):
             drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
             self.file_id = drive.Drive.try_write(drive_file)
     
-    def test_write(self):
-        self.assertTrue(drive.Drive.exists(self.file_id))
+    def test_exists(self):
+        self.assertTrue(self.exists(self.file_id))
         self.delete_in_test()
+
+    def exists(file_id: str) -> bool:
+        try:
+            Drive.files.get(fileId=file_id).execute()
+            return True
+        except HttpError as e:
+            if e.resp.status == 404:
+                return False
+            raise
 
     def test_delete(self):
         self.delete_in_test()
