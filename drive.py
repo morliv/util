@@ -43,7 +43,7 @@ class Metadata:
         for key, value in kwargs.items():
             if value:
                 setattr(self, key, value)
-            if key == 'parents'
+            if key == 'parents':
                 self.parents = list(self.parents)
 
     @staticmethod
@@ -91,7 +91,7 @@ class File:
     def __init__(self, file_path: Path, mimeType: str=None, file_id: str=None, parent_file_ids: list=None):
         self.file_path = file_path
         self.mimeType = mimeType if mimeType else magic.from_file(str(file_path), mime=True)
-        self.metadata = Metadata(file_id, self.mimeType, parent_file_ids, self.file_path.name)
+        self.metadata = Metadata(fileId=file_id, mimeType=self.mimeType, parents=parent_file_ids, name=self.file_path.name)
 
     def equivalents(self) -> Set[str]:
         file_ids_of_equivalents = set()

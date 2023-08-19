@@ -1,46 +1,63 @@
 #!/usr/bin/env python3
 
-import drive
 import unittest
 from pathlib import Path
 import tempfile
-import pdb
 import sys
 import traceback
+from googleapiclient.errors import HttpError
+import pdb
 
+import drive
 
 class TestCRUD(unittest.TestCase):
 
     def setUp(self):
         with tempfile.NamedTemporaryFile(mode='w+t') as file:
-            file.write('Content')
+            self.content = 'Content'
+            file.write(self.content)
             file.flush()
             self.drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
-            self.file_id = drive.Drive.try_write(drive_file)
-    
-    def test_exists(self):
-        self.assertTrue(self.exists(self.file_id))
-        self.delete_in_test()
+            self.file_id = drive.Drive.try_write(self.drive_file)
 
-    def exists(file_id: str) -> bool:
+    def delete_drive_file(self):
         try:
-            Drive.files.get(fileId=file_id).execute()
+            drive.Drive.try_delete(self.file_id)
+        except AssertionError:
+            print("Delete and empty from trash any files created in Drive")
+            raise
+
+    def id_exists(self) -> bool:
+        try:
+            drive.Drive.files.get(fileId=self.file_id).execute()
             return True
         except HttpError as e:
             if e.resp.status == 404:
                 return False
             raise
 
-    def test_delete(self):
-        self.delete_in_test()
-        self.assertFalse(drive.Drive.exists(self.file_id))
 
-    def delete_in_test(self):
-        try:
-            drive.Drive.try_delete(self.file_id)
-        except AssertionError:
-            print("Delete and empty from trash any files created in Drive")
-            raise
+class TestWrite(TestCRUD):
+
+    def tearDown(self):
+        self.delete_drive_file()
+
+    def test_exists(self):
+        self.assertTrue(self.id_exists())
+        self.delete_drive_file()
+
+    def test_name(self):
+        self.assertEqual(drive.Metadata(self.file_id).name, self.drive_file.metadata.name)
+
+    def test_content(self):
+        pass
+        #self.assertEqual(
+
+
+class TestDelete(TestCRUD):
+    def test_delete(self):
+        self.delete_drive_file()
+        self.assertFalse(self.id_exists())
 
 
 class TestSync(unittest.TestCase):
