@@ -13,6 +13,7 @@ import magic
 from googleapiclient.errors import HttpError
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
+import dictionary
 import processing
 import google_api
 
@@ -36,15 +37,22 @@ def parsed_args():
 
 
 class Metadata:
-    def __init__(self, driveId: Optional[str] = None, mimeType: Optional[str] = None,
-             parents: Optional[List[str]] = None, name: Optional[str] = None):
-        self.driveId = driveId
-        self.mimeType = mimeType
-        self.parents = None if parents is None else list(parents)
-        self.name = name
-        for key, value in list(vars(self).items()):
-            if value is None:
-                delattr(self, key)
+    def __init__(self, fileId: str=None, **kwargs):
+        if fileId:
+            kwargs |= Metadata.__metadata(fileId)
+        for key, value in kwargs.items():
+            if value:
+                setattr(self, key, value)
+            if key == 'parents'
+                self.parents = list(self.parents)
+
+    @staticmethod
+    def __metadata(file_id: str) -> dict:
+        try:
+            metadata_dict = Drive.files.get(fileId=file_id, fields='id, name, mimeType, parents').execute()
+            return dictionary.replace_key(metadata_dict, 'id', 'fileId')
+        except HttpError as e:
+            print(f"Failed to fetch metadata for file ID: {file_id}. Error: {e}")
 
     def query(self, parent_file_id):
         return Query.from_dict(dict(vars(self), parents=parent_file_id))
@@ -186,17 +194,6 @@ class Drive:
            Drive.files.delete(fileId=file_id).execute() 
         except HttpError as e:
             print(e)
-
-    @staticmethod
-    def get_metadata_for_files(file_ids: List[str]) -> List[dict]:
-        metadata_list = []
-        for file_id in file_ids:
-            try:
-                metadata = Drive.files.get(fileId=file_id, fields='id, name, mimeType, parents').execute()
-                metadata_list.append(metadata)
-            except HttpError as e:
-                print(f"Failed to fetch metadata for file ID: {file_id}. Error: {e}")
-        return metadata_list
 
     @staticmethod
     def files_in(drive_folder_path: Path):

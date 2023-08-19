@@ -15,7 +15,7 @@ class TestCRUD(unittest.TestCase):
         with tempfile.NamedTemporaryFile(mode='w+t') as file:
             file.write('Content')
             file.flush()
-            drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
+            self.drive_file = drive.File(Path(file.name), parent_file_ids=['root'])
             self.file_id = drive.Drive.try_write(drive_file)
     
     def test_exists(self):
