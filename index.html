@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <script type="text/javascript" async
+    src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.7/MathJax.js?config=TeX-MML-AM_CHTML">
+  </script>
+</head>
+<body>
+
+  <div id="latex-content"></div>
+
+<script>
+    fetch('eqs.tex')
+      .then(response => response.text())
+      .then(data => {
+        document.getElementById('latex-content').innerHTML = data;
+        MathJax.Hub.Queue(["Typeset", MathJax.Hub, 'latex-content']);
+      });
+</script>
+
+</body>
+</html>
+  
