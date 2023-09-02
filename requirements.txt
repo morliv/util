@@ -46,7 +46,6 @@ tomli==2.0.1
 traitlets==5.14.1
 uritemplate==4.1.1
 urllib3==2.1.0
-util==1.0.3
 watchdog==3.0.0
 wcwidth==0.2.13
 wmctrl==0.5

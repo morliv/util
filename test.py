@@ -17,3 +17,4 @@ class OrderedTestLoader(unittest.TestLoader):
         test_names = super().getTestCaseNames(testCaseClass)
         test_method_order = {name: order for order, name in enumerate(dir(testCaseClass))}
         return sorted(test_names, key=lambda name: test_method_order[name])
+
