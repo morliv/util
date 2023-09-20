@@ -82,7 +82,7 @@ class File:
         if len(path.parts) == 1:
             return ['root']
         file = File(mimeType=Drive.FOLDER_MIMETYPE, parents=File.folder(path.parent))
-        return files if files := file.list() else [file.create()]
+        return files if (files := file.list()) else [file.create()]
 
 class Query:
     class Clause:
