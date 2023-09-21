@@ -15,13 +15,17 @@ from googleapiclient.errors import HttpError
 import drive
 import test
 
+
 class FileTestCase(unittest.TestCase):
 
     def test_clean(self):
         self.assertEqual(drive.File()._clean(), {})
 
+    def test_only_one_creates_file(self):
+        mapped = drive.Map(Path(self.file.name))
+        self.assertTrue(mapped.only_one().equivalent())
 
-class LocalFileTestCase(test.FileTestCase):
+class MapTestCase(test.FileTestCase):
     
     def setUp(self):
         super().setUp()
@@ -54,15 +58,15 @@ class LocalFileTestCase(test.FileTestCase):
     def test_second_dup_in_drive(self):
         self.assertIsNotNone(self.dups[1].file.get())
 
-    def keep_first_test(self):
-        drive.Drive.keep_first([dup.file for dup in self.dups])
+    def only_one_test(self):
+        self.dups[0].only_one()
 
-    def test_keep_first_first_dup_remains(self):
-        self.keep_first_test()
+    def test_only_one_keep_dup_1(self):
+        self.only_one_test()
         self.assertIsNotNone(self.dups[0].file.get())
 
-    def test_keep_first_second_dup_removed(self):
-        self.keep_first_test()
+    def test_only_one_deletes_dup_2(self):
+        self.only_one_test()
         self.assertIsNone(self.dups[1].file.get())
 
     def test_sync_file(self):
@@ -73,7 +77,7 @@ class LocalFileTestCase(test.FileTestCase):
 class LocalDirTestCase(test.DirTestCase):
     
     def test_syncs(self):
-        drive.Map(self.dir_path).sync(Path('/'))
+        drive.Map(self.dir_path).sync()
 
  
 if __name__ == '__main__':

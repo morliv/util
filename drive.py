@@ -27,7 +27,7 @@ def main():
     if args.list_files:
         Drive.files_in(drive_folder_path)
     else:
-        Drive.sync(Path(args.source).expanduser(), drive_folder_path)
+        Map.sync(Path(args.source).expanduser(), drive_folder_path)
 
 
 def parsed_args():
@@ -41,7 +41,7 @@ def parsed_args():
 class File:
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, fileId: Optional[str]=None, parents: Optional[List[str]]=None, **kwargs):
         self.name = name
-        self.mimeType = mimeType
+        self.mimeType = mimeType or Drive.FOLDER_MIMETYPE
         self.fileId = fileId or kwargs.get('id', None) 
         self.parents = parents
 
@@ -52,9 +52,6 @@ class File:
             if e.resp.status == 404:
                 return None
             raise
-
-    def _clean(self):
-        return {attr: val for attr, val in vars(self).items() if val is not None}
 
     def get(self) -> Optional[File]:
         if self.fileId:
@@ -70,19 +67,58 @@ class File:
     def __from_dict_list(self, files: List[dict]) -> List[File]:
         return [File(**file) for file in files]
 
+    def one(self) -> File:
+        return self.first(self.list()) or self.create()
+
     def create(self, media_body=None) -> File:
-        return File(**self._try_http(Drive.files.create, body=vars(self), media_body=media_body))
+        return File(**self.file._try_http(Drive.files.create, body=vars(self.file), media_body=self.media_body))
+
+    def first(self, files: List[File]) -> Optional[File]:
+        for m in files[1:]: m.delete()
+        return next(iter(files), None)
 
     def delete(self) -> Optional[str]:
         return self.fileId and self._try_http(Drive.files.delete, fileId=self.fileId) 
 
     @staticmethod
-    def folder(path: Path) -> List[File]:
+    def folder(path: Path) -> str:
         path = '/' / Path(path)
-        if len(path.parts) == 1:
-            return ['root']
-        file = File(mimeType=Drive.FOLDER_MIMETYPE, parents=File.folder(path.parent))
-        return files if (files := file.list()) else [file.create()]
+        return File(name=path.name, parents=[File.folder(path.parent)]).one()
+ if len(path.parts) > 1 else 'root'
+
+
+
+class Map(File):
+    def __init__(self, local: Path, drive: Path=Path('/'), file: File=None):
+        self.local = local
+        self.mimeType = magic.from_file(str(local), mime=True) if local.is_file() else Drive.FOLDER_MIMETYPE
+        self.media = self.local.is_file() and MediaFileUpload(str(self.local), mimetype=self.file.mimeType)
+        self.parents = [File.folder(drive)]
+        self.file = super().__init__(self.local.name, self.mimeType, parents=self.parents)
+        self.sync()
+
+    def sync(self) -> Map:
+        self.only_one()
+        if self.local.is_dir():
+            for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name).sync()
+        return self
+
+    def list(self) -> List[File]:
+        equivalent, matching_metadata = [], []
+        for f in self.file().list():
+            if Map(self.local, file=f).equivalent(): equivalent.append(f)
+            else: matching_metadata.append(f)
+        return equivalent.extend(matching_metadata)
+
+    def equivalent(self) -> bool:
+        google_file_content = Drive.file_content(self.file.fileId)
+        with open(self.local, 'rb') as local_file:
+            local_file_content = local_file.read()
+        return hashlib.md5(google_file_content).hexdigest() == hashlib.md5(local_file_content).hexdigest()
+
+    def create(self) -> File:
+        return super().create(self.media)
+
 
 class Query:
     class Clause:
@@ -107,42 +143,6 @@ class Query:
         return f' {logic_op} '.join([clause.string() for clause in clauses])
 
 
-class Map:
-    def __init__(self, path: Path, file: File=None, ):
-        self.path = path
-        mimeType = magic.from_file(str(path), mime=True) if path.is_file() else Drive.FOLDER_MIMETYPE
-        file_dict = {'name': path.name, 'mimeType': mimeType, 'parents': []}
-        if file:
-            file_dict |= file._clean()
-        self.file = File(**file_dict)
-        self.media = self.path.is_file() and MediaFileUpload(str(self.path), mimetype=self.file.mimeType)
-
-    def sync(self) -> Map:
-        drive_folder_file = Drive.keep_first(list(Drive.folder(self.folder)))
-        self.only_one()
-        if self.path.is_dir():
-            for p in self.path.iterdir(): Map(path=p).sync()
-
-    def only_one(self):
-        self.delete_redundancies()
-        self.equivalents()[:1] or self.write()
-
-    def delete_redundancies(self):
-        for m in self.file.list() + self.equivalents()[1:]: m.delete()
-
-    def equivalents(self) -> List[File]:
-        return [m for m in self.file.list() if Map(self.path, m).equivalent()]
-
-    def equivalent(self) -> bool:
-        google_file_content = Drive.file_content(self.file.fileId)
-        with open(self.path, 'rb') as local_file:
-            local_file_content = local_file.read()
-        return hashlib.md5(google_file_content).hexdigest() == hashlib.md5(local_file_content).hexdigest()
-
-    def write(self):
-        return Map(self.path, self.file.create(media_body=self.media))
-
-
 class Drive:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
 
@@ -158,11 +158,6 @@ class Drive:
         while not done:
             status, done = downloader.next_chunk()
         return fh.getvalue()
-
-    @staticmethod
-    def keep_first(files: List[File]) -> File:
-        for file in files[1:]: file.delete()
-        return files[0]
 
     @staticmethod
     def print_permissions(folder_id):

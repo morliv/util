@@ -21,7 +21,9 @@ def main():
       model="gpt-4",
       messages=new_message(chat, message))
 
-    new_message(chat.completion.choices[0].message)
+    reply = chat.completion.choices[0].message
+    print(reply)
+    new_message(chat, reply)
 
 def new_message(chat, message) -> List[dict]:
     with chat.open("r") as f:
