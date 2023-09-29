@@ -16,74 +16,86 @@ import drive
 import test
 
 
-class FileTestCase(unittest.TestCase):
+class NoLocalTestCase(unittest.TestCase):
 
-    def test_clean(self):
-        self.assertEqual(drive.File()._clean(), {})
+    def setUp(self):
+        self.folder = drive.File('Test').create()
 
-    def test_only_one_creates_file(self):
-        mapped = drive.Map(Path(self.file.name))
-        self.assertTrue(mapped.only_one().equivalent())
+    def tearDown(self):
+        self.folder.delete() 
 
-class MapTestCase(test.FileTestCase):
-    
+    def test_creates_folder(self):
+        self.assertIsNotNone(self.folder.get())
+
+
+class LocalFileTestCase(test.FileTestCase):
+
     def setUp(self):
         super().setUp()
-        self.dups = [self.file_to_drive() for i in range(2)]
+        self.file_map = self.mapped()
 
-    def file_to_drive(self):
-        return drive.Map(Path(self.file.name), drive.File()).write()
+    def mapped(self):
+        breakpoint()
+        return drive.Map(self.file.name)
 
     def tearDown(self):
         super().tearDown()
-        self.delete_drive_files() 
+        self.file_map.file.delete()
 
-    def delete_drive_files(self):
-        try:
-            for dup in self.dups: dup.file.delete()
-        except Exception:
-            print("Delete and empty from trash any files created in Drive")
-            raise
+    def test_file_update(self):
+        self.file.write('Content 2')
+        self.assertTrue(self.file_map.equivalent())
 
     def test_local_and_drive_are_equivalent(self):
-        self.assertTrue(self.dups[0].equivalent())
+        self.assertTrue(self.file_map.equivalent())
 
     def test_delete(self):
-        self.delete_drive_files()
-        self.assertIsNone(self.dups[0].file.get())
+        self.file_map.file.delete()
+        self.assertIsNone(self.file_map.file.get())
+
+
+class DupTestCase(LocalFileTestCase):
+    
+    def setUp(self):
+        super().setUp()
+        self.dups = [self.mapped().file for i in range(2)]
+        
+    def tearDown(self):
+        super().tearDown()
+        for dup in self.dups: dup.delete()
 
     def test_first_dup_in_drive(self):
-        self.assertIsNotNone(self.dups[0].file.get())
+        self.assertIsNotNone(self.dups[0].get())
 
     def test_second_dup_in_drive(self):
-        self.assertIsNotNone(self.dups[1].file.get())
+        self.assertIsNotNone(self.dups[1].get())
 
-    def only_one_test(self):
-        self.dups[0].only_one()
+    def one_test(self):
+        return self.dups[0].one()
 
-    def test_only_one_keep_dup_1(self):
-        self.only_one_test()
-        self.assertIsNotNone(self.dups[0].file.get())
+    def test_one_keeps_dup_1(self):
+        self.one_test()
+        self.assertIsNotNone(self.dups[0].get())
 
-    def test_only_one_deletes_dup_2(self):
-        self.only_one_test()
-        self.assertIsNone(self.dups[1].file.get())
-
-    def test_sync_file(self):
-        self.file.write('Content 2')
-        self.assertTrue(self.dups[0].sync().equivalent())
+    def test_one_deletes_dup_2(self):
+        self.one_test()
+        self.assertIsNone(self.dups[1].get())
 
 
 class LocalDirTestCase(test.DirTestCase):
     
     def test_syncs(self):
-        drive.Map(self.dir_path).sync()
+        drive.Map(self.dir_path)
 
  
 if __name__ == '__main__':
+    single_func_from_class = ['test_one_deletes_dup_2', DupTestCase]
     try:
-        loader = test.OrderedTestLoader()
-        suite = loader.loadTestsFromModule(sys.modules[__name__])
+        if single_func_from_class:
+            suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)
+        else:
+            loader = test.OrderedTestLoader()
+            suite = loader.loadTestsFromModule(sys.modules[__name__])
         unittest.TextTestRunner(failfast=True).run(suite)
     except Exception:
         extype, value, tb = sys.exc_info()

@@ -12,7 +12,6 @@ import openai
 openai.api_key = os.getenv("OPENAI_API_KEY")
 
 def main():
-    breakpoint()
     content = ' '.join(content) if (content := sys.argv[1:]) else pyperclip.paste()
     chat = Path("cure.json")
     message = {"role": "user", "content": content}
@@ -21,15 +20,16 @@ def main():
       model="gpt-4",
       messages=new_message(chat, message))
 
-    reply = chat.completion.choices[0].message
-    print(reply)
-    new_message(chat, reply)
+    response = completion.choices[0].message
+    print(response.content)
+    new_message(chat, response)
 
 def new_message(chat, message) -> List[dict]:
-    with chat.open("r") as f:
-        file_content = json.load(f)
-    if chat.exists() and isinstance(file_content, list):
-        file_content.append(message)
+    if chat.exists():
+        with chat.open("r") as f:
+            file_content = json.load(f)
+        if isinstance(file_content, list):
+            file_content.append(message)
     else:
         file_content = [message]
     with chat.open("w") as f:

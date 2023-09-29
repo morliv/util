@@ -45,6 +45,12 @@ class File:
         self.fileId = fileId or kwargs.get('id', None) 
         self.parents = parents
 
+    def get(self) -> Optional[File]:
+        if self.fileId:
+            if result := self._try_http(Drive.files.get, fileId=self.fileId):
+                return File(**result)
+        return None
+
     def _try_http(self, func: Callable, **kwargs):
         try:
             return func(**kwargs).execute()
@@ -53,71 +59,75 @@ class File:
                 return None
             raise
 
-    def get(self) -> Optional[File]:
-        if self.fileId:
-            if result := self._try_http(Drive.files.get, fileId=self.fileId):
-                return File(**result)
-        return None
+    def one(self, media_body: MediaFileUpload=None) -> File:
+        return File.first(self.list()) or self.create(media_body)
 
     def list(self) -> List[File]:
-        response = self._try_http(Drive.files.list, q=Query.from_dict(self._clean()))
-        results = response.get('files', []) if response else []
-        return self.__from_dict_list(results)
+        results = []
+        for parent in self.parents:
+            response = self._try_http(Drive.files.list, q=Query.from_dict(self.single_parent(parent)))
+            results += response.get('files', []) if response else []
+        return self.__from_responses(results)
 
-    def __from_dict_list(self, files: List[dict]) -> List[File]:
-        return [File(**file) for file in files]
+    def single_parent(self, parent) -> dict:
+        body = self.body()
+        body['parents'] = parent
+        return body
 
-    def one(self) -> File:
-        return self.first(self.list()) or self.create()
+    def body(self) -> dict:
+        return {key: val for key, val in self.__dict__.items() if val}
 
-    def create(self, media_body=None) -> File:
-        return File(**self.file._try_http(Drive.files.create, body=vars(self.file), media_body=self.media_body))
+    def __from_responses(self, files: List[dict]) -> List[File]:
+        return [File(**file).get() for file in files]
 
-    def first(self, files: List[File]) -> Optional[File]:
+    @staticmethod
+    def first(files: List[File]) -> Optional[File]:
         for m in files[1:]: m.delete()
         return next(iter(files), None)
 
     def delete(self) -> Optional[str]:
         return self.fileId and self._try_http(Drive.files.delete, fileId=self.fileId) 
 
+    def create(self, media_body: MediaFileUpload=None) -> File:
+        return File(**self._try_http(Drive.files.create, body=self.body(), media_body=media_body)).get()
+
+    def content(self) -> bytes:
+        request = self.fileId and Drive.service.files().get_media(fileId=self.fileId)
+        fh = io.BytesIO()
+        downloader = MediaIoBaseDownload(fh, request)
+        done = False
+        while not done:
+            status, done = downloader.next_chunk()
+        return fh.getvalue()
+
     @staticmethod
     def folder(path: Path) -> str:
         path = '/' / Path(path)
-        return File(name=path.name, parents=[File.folder(path.parent)]).one()
- if len(path.parts) > 1 else 'root'
+        return File(name=path.name, parents=[File.folder(path.parent)]).one().fileId if len(path.parts) > 1 else 'root'
 
 
-
-class Map(File):
-    def __init__(self, local: Path, drive: Path=Path('/'), file: File=None):
-        self.local = local
-        self.mimeType = magic.from_file(str(local), mime=True) if local.is_file() else Drive.FOLDER_MIMETYPE
-        self.media = self.local.is_file() and MediaFileUpload(str(self.local), mimetype=self.file.mimeType)
-        self.parents = [File.folder(drive)]
-        self.file = super().__init__(self.local.name, self.mimeType, parents=self.parents)
+class Map():
+    def __init__(self, local, drive: Path=Path('/')):
+        self.local = Path(local)
+        mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else Drive.FOLDER_MIMETYPE
+        self.media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
+        self.file = File(self.local.name, mimeType, parents=[File.folder(drive)]).one(self.media)
         self.sync()
 
-    def sync(self) -> Map:
-        self.only_one()
+    def sync(self):
         if self.local.is_dir():
-            for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name).sync()
-        return self
+            for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name)
 
     def list(self) -> List[File]:
         equivalent, matching_metadata = [], []
-        for f in self.file().list():
-            if Map(self.local, file=f).equivalent(): equivalent.append(f)
+        for f in self.file.list():
+            if f.equivalent(): equivalent.append()
             else: matching_metadata.append(f)
         return equivalent.extend(matching_metadata)
 
     def equivalent(self) -> bool:
-        google_file_content = Drive.file_content(self.file.fileId)
         with open(self.local, 'rb') as local_file:
-            local_file_content = local_file.read()
-        return hashlib.md5(google_file_content).hexdigest() == hashlib.md5(local_file_content).hexdigest()
-
-    def create(self) -> File:
-        return super().create(self.media)
+            return hashlib.md5(local_file.read()).hexdigest() == hashlib.md5(self.file.content()).hexdigest()
 
 
 class Query:
@@ -131,12 +141,12 @@ class Query:
 
         def string(self):
             if self.key in Query.Clause.IN_KEYS: 
-                return f"'{self.val[0]}' {self.op} {self.key}"
+                return f"'{self.val}' {self.op} {self.key}"
             return f"{self.key} {self.op} '{self.val}'"
 
     @staticmethod
     def from_dict(dictionary: dict):
-        return Query.query([Query.Clause(key, value) for key, value in dictionary.items() if key != 'fileId'])
+        return Query.query([Query.Clause(key, value) for key, value in dictionary.items()])
 
     @staticmethod
     def query(clauses: List[Clause], logic_op='and'):
@@ -150,16 +160,6 @@ class Drive:
     files = service.files()
 
     @staticmethod
-    def file_content(file_id: str) -> bytes:
-        request = Drive.service.files().get_media(fileId=file_id)
-        fh = io.BytesIO()
-        downloader = MediaIoBaseDownload(fh, request)
-        done = False
-        while not done:
-            status, done = downloader.next_chunk()
-        return fh.getvalue()
-
-    @staticmethod
     def print_permissions(folder_id):
         permissions = Drive.service.permissions().list(fileId=folder_id).execute()
         for permission in permissions.get('permissions', []):
@@ -169,7 +169,7 @@ class Drive:
     def files_in(drive_folder_path: Path):
         drive_folder_path = Path(drive_folder_path)
         file_lists = {}
-        for folder_id in Drive.folder(drive_folder_path):
+        for folder_id in File.folder(drive_folder_path):
             print(folder_id)
             file_lists[folder_id] = sorted(Drive.list_file_names_in_folder_by_id(folder_id))
             Drive.print_file_names(file_lists[folder_id])
