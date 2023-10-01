@@ -18,7 +18,7 @@ from googleapiclient.errors import HttpError
 import dictionary
 import function
 import processing
-import google_api
+import goog
 
 
 def main():
@@ -27,7 +27,7 @@ def main():
     if args.list_files:
         Drive.files_in(drive_folder_path)
     else:
-        Map.sync(Path(args.source).expanduser(), drive_folder_path)
+        Map(Path(args.source).expanduser(), drive_folder_path)
 
 
 def parsed_args():
@@ -45,19 +45,36 @@ class File:
         self.fileId = fileId or kwargs.get('id', None) 
         self.parents = parents
 
-    def get(self) -> Optional[File]:
-        if self.fileId:
-            if result := self._try_http(Drive.files.get, fileId=self.fileId):
-                return File(**result)
-        return None
+    @staticmethod
+    def get(fileId: str) -> Optional[File]:
+        return File.__new(File.fileId and goog.call(Drive.files.get(fileId=fileId)))
 
-    def _try_http(self, func: Callable, **kwargs):
-        try:
-            return func(**kwargs).execute()
-        except HttpError as e:
-            if e.resp.status == 404:
-                return None
-            raise
+    @staticmethod
+    def __new(response: Optional[dict], converter: Callable=lambda r: r) -> File:
+        return response and File(**converter(response))
+    
+    @staticmethod
+    def __completed_new(response: Optional[dict]) -> File:
+        return File.__new(response, File.__complete_response)
+
+    @staticmethod
+    def __complete_response(response: dict) -> File:
+        return response if File.complete(response) else File.get(response['fileId'])
+    
+    @staticmethod
+    def complete(response: dict) -> bool:
+        return all([k in response.keys() for k in {'name', 'mimeType', 'fileId', 'parents'})
+    
+    def single_parent(self, parent) -> dict:
+        body = self.body()
+        body['parents'] = parent
+        return body
+
+    def body(self) -> dict:
+        return {k: v for k, v in self.__dict__.items() if v}
+
+    def ___responses(self, : List[dict]) -> List[File]:
+        return [File.__new(r) for r in responses]
 
     def one(self, media_body: MediaFileUpload=None) -> File:
         return File.first(self.list()) or self.create(media_body)
@@ -65,20 +82,9 @@ class File:
     def list(self) -> List[File]:
         results = []
         for parent in self.parents:
-            response = self._try_http(Drive.files.list, q=Query.from_dict(self.single_parent(parent)))
+            response = goog.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent))))
             results += response.get('files', []) if response else []
-        return self.__from_responses(results)
-
-    def single_parent(self, parent) -> dict:
-        body = self.body()
-        body['parents'] = parent
-        return body
-
-    def body(self) -> dict:
-        return {key: val for key, val in self.__dict__.items() if val}
-
-    def __from_responses(self, files: List[dict]) -> List[File]:
-        return [File(**file).get() for file in files]
+        return self.completed_new(results)
 
     @staticmethod
     def first(files: List[File]) -> Optional[File]:
@@ -86,10 +92,10 @@ class File:
         return next(iter(files), None)
 
     def delete(self) -> Optional[str]:
-        return self.fileId and self._try_http(Drive.files.delete, fileId=self.fileId) 
+        return self.fileId and goog.call(Drive.files.delete(fileId=self.fileId))
 
     def create(self, media_body: MediaFileUpload=None) -> File:
-        return File(**self._try_http(Drive.files.create, body=self.body(), media_body=media_body)).get()
+        return File.__completed_new(goog.call(Drive.files.create(body=self.body(), media_body=media_body)))
 
     def content(self) -> bytes:
         request = self.fileId and Drive.service.files().get_media(fileId=self.fileId)
@@ -146,7 +152,7 @@ class Query:
 
     @staticmethod
     def from_dict(dictionary: dict):
-        return Query.query([Query.Clause(key, value) for key, value in dictionary.items()])
+        return Query.query([Query.Clause(k, v) for k, v in dictionary.items()])
 
     @staticmethod
     def query(clauses: List[Clause], logic_op='and'):
@@ -156,7 +162,7 @@ class Query:
 class Drive:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
 
-    service = google_api.service('drive', 3)
+    service = goog.service('drive', 3)
     files = service.files()
 
     @staticmethod

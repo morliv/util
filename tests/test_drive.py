@@ -10,8 +10,6 @@ import shutil
 import copy
 import pdb
 
-from googleapiclient.errors import HttpError
-
 import drive
 import test
 
@@ -35,7 +33,6 @@ class LocalFileTestCase(test.FileTestCase):
         self.file_map = self.mapped()
 
     def mapped(self):
-        breakpoint()
         return drive.Map(self.file.name)
 
     def tearDown(self):
