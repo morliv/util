@@ -31,27 +31,28 @@ def main():
 
 
 def parsed_args():
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-l', '--source', type=str)
-    parser.add_argument('-d', '--drive_folder', type=str)
-    parser.add_argument('-f', '--list-files', action='store_true')
-    return parser.parse_args()
+    p = argparse.ArgumentParser()
+    for a, k in [(('-l', '--source'), {type: str}),
+              (('-d', '--drive_folder'), {type: str}),
+              (('-f', '--list-files'), {action: 'store_true'})]:
+        p.add_argument(*a, **k)
+    return p.parse_args()
 
 
 class File:
-    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, fileId: Optional[str]=None, parents: Optional[List[str]]=None, **kwargs):
+    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: Optional[List[str]]=None, **kwargs):
         self.name = name
         self.mimeType = mimeType or Drive.FOLDER_MIMETYPE
-        self.fileId = fileId or kwargs.get('id', None) 
+        self.id = id or kwargs.get('id', None) 
         self.parents = parents
 
     @staticmethod
-    def get(fileId: str) -> Optional[File]:
-        return File.__new(File.fileId and goog.call(Drive.files.get(fileId=fileId)))
+    def get(id: str) -> Optional[File]:
+        return File.__new(goog.call(Drive.files.get(fileId=id)))
 
     @staticmethod
-    def __new(response: Optional[dict], converter: Callable=lambda r: r) -> File:
-        return response and File(**converter(response))
+    def __new(response: Optional[dict], convert: Callable=lambda r: File(**r)) -> File:
+        return response and convert(response)
     
     @staticmethod
     def __completed_new(response: Optional[dict]) -> File:
@@ -59,11 +60,12 @@ class File:
 
     @staticmethod
     def __complete_response(response: dict) -> File:
-        return response if File.complete(response) else File.get(response['fileId'])
+        return response if File.complete(response) else File.get(response['id'])
     
     @staticmethod
     def complete(response: dict) -> bool:
-        return all([k in response.keys() for k in {'name', 'mimeType', 'fileId', 'parents'})
+        breakpoint()
+        return all([k in response.keys() for k in {'name', 'mimeType', 'id', 'parents'}])
     
     def single_parent(self, parent) -> dict:
         body = self.body()
@@ -71,10 +73,7 @@ class File:
         return body
 
     def body(self) -> dict:
-        return {k: v for k, v in self.__dict__.items() if v}
-
-    def ___responses(self, : List[dict]) -> List[File]:
-        return [File.__new(r) for r in responses]
+        return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if v}
 
     def one(self, media_body: MediaFileUpload=None) -> File:
         return File.first(self.list()) or self.create(media_body)
@@ -84,7 +83,11 @@ class File:
         for parent in self.parents:
             response = goog.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent))))
             results += response.get('files', []) if response else []
-        return self.completed_new(results)
+        return self.__completed_new_files(results)
+
+    @staticmethod
+    def __completed_new_files(responses: List[dict]) -> List[File]:
+        return [File.__new(r) for r in responses if not None]
 
     @staticmethod
     def first(files: List[File]) -> Optional[File]:
@@ -92,13 +95,15 @@ class File:
         return next(iter(files), None)
 
     def delete(self) -> Optional[str]:
-        return self.fileId and goog.call(Drive.files.delete(fileId=self.fileId))
+        return self.id and goog.call(Drive.files.delete(fileId=self.id))
 
     def create(self, media_body: MediaFileUpload=None) -> File:
+        print(goog.call(Drive.files.create(body=self.body(), media_body=media_body)))
+        breakpoint()
         return File.__completed_new(goog.call(Drive.files.create(body=self.body(), media_body=media_body)))
 
     def content(self) -> bytes:
-        request = self.fileId and Drive.service.files().get_media(fileId=self.fileId)
+        request = self.id and Drive.service.files().get_media(fileId=self.id)
         fh = io.BytesIO()
         downloader = MediaIoBaseDownload(fh, request)
         done = False
@@ -109,7 +114,7 @@ class File:
     @staticmethod
     def folder(path: Path) -> str:
         path = '/' / Path(path)
-        return File(name=path.name, parents=[File.folder(path.parent)]).one().fileId if len(path.parts) > 1 else 'root'
+        return File(name=path.name, parents=[File.folder(path.parent)]).one().id if len(path.parts) > 1 else 'root'
 
 
 class Map():
