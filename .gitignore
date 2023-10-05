@@ -6,3 +6,4 @@ credentials.json
 util.egg-info
 logs.log
 .vscode/
+*.json

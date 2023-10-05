@@ -17,7 +17,8 @@ from googleapiclient.errors import HttpError
 
 import dictionary
 import function
-import processing
+import process
+import obj
 import goog
 
 
@@ -40,33 +41,18 @@ def parsed_args():
 
 
 class File:
+    FIELDS = ['name', 'mimeType', 'fileId', 'parents']
+    FIELDS_REQUEST = ','.join(FIELDS)
+
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: Optional[List[str]]=None, **kwargs):
         self.name = name
         self.mimeType = mimeType or Drive.FOLDER_MIMETYPE
         self.id = id or kwargs.get('id', None) 
         self.parents = parents
 
-    @staticmethod
-    def get(id: str) -> Optional[File]:
-        return File.__new(goog.call(Drive.files.get(fileId=id)))
+    def get():
+        obj.update(goog.call(Drive.files.get(fileId=obj.id)))
 
-    @staticmethod
-    def __new(response: Optional[dict], convert: Callable=lambda r: File(**r)) -> File:
-        return response and convert(response)
-    
-    @staticmethod
-    def __completed_new(response: Optional[dict]) -> File:
-        return File.__new(response, File.__complete_response)
-
-    @staticmethod
-    def __complete_response(response: dict) -> File:
-        return response if File.complete(response) else File.get(response['id'])
-    
-    @staticmethod
-    def complete(response: dict) -> bool:
-        breakpoint()
-        return all([k in response.keys() for k in {'name', 'mimeType', 'id', 'parents'}])
-    
     def single_parent(self, parent) -> dict:
         body = self.body()
         body['parents'] = parent
@@ -79,15 +65,11 @@ class File:
         return File.first(self.list()) or self.create(media_body)
 
     def list(self) -> List[File]:
-        results = []
+        responses = []
         for parent in self.parents:
-            response = goog.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent))))
-            results += response.get('files', []) if response else []
-        return self.__completed_new_files(results)
-
-    @staticmethod
-    def __completed_new_files(responses: List[dict]) -> List[File]:
-        return [File.__new(r) for r in responses if not None]
+            if response := goog.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
+                responses += response.get('files', []) 
+        return obj.objs(self, responses)
 
     @staticmethod
     def first(files: List[File]) -> Optional[File]:
@@ -98,9 +80,7 @@ class File:
         return self.id and goog.call(Drive.files.delete(fileId=self.id))
 
     def create(self, media_body: MediaFileUpload=None) -> File:
-        print(goog.call(Drive.files.create(body=self.body(), media_body=media_body)))
-        breakpoint()
-        return File.__completed_new(goog.call(Drive.files.create(body=self.body(), media_body=media_body)))
+        return obj.update(self, File.__call(Drive.files.create(body=self.body(), media_body=media_body)))
 
     def content(self) -> bytes:
         request = self.id and Drive.service.files().get_media(fileId=self.id)
