@@ -10,8 +10,8 @@ import shutil
 import copy
 import pdb
 
-import drive
-import test
+from util import test
+from util.g import drive
 
 
 class NoLocalTestCase(unittest.TestCase):

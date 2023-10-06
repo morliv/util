@@ -1,10 +1,7 @@
-from typing import Optional
+from typing import Optional, Callable
 
-def sync(obj, f: Callable):
-    update(obj, call(f))
-    
-def update(obj, response: Optional[dict]):
-    if not response:
+def update(obj, f: Callable):
+    if not (response := call(f)):
         for k, v in response:
             if hasattr(obj, k):
                 setattr(obj, k, v)

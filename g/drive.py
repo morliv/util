@@ -15,11 +15,8 @@ import magic
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
-import dictionary
-import function
-import process
-import obj
-import goog
+from .. import dictionary, function, process, obj
+from . import api
 
 
 def main():
@@ -51,7 +48,7 @@ class File:
         self.parents = parents
 
     def get():
-        obj.update(goog.call(Drive.files.get(fileId=obj.id)))
+        api.update(Drive.files.get(fileId=obj.id))
 
     def single_parent(self, parent) -> dict:
         body = self.body()
@@ -67,9 +64,9 @@ class File:
     def list(self) -> List[File]:
         responses = []
         for parent in self.parents:
-            if response := goog.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
+            if response := api.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
                 responses += response.get('files', []) 
-        return obj.objs(self, responses)
+        return obj.update(self, responses)
 
     @staticmethod
     def first(files: List[File]) -> Optional[File]:
@@ -77,10 +74,10 @@ class File:
         return next(iter(files), None)
 
     def delete(self) -> Optional[str]:
-        return self.id and goog.call(Drive.files.delete(fileId=self.id))
+        return self.id and api.call(Drive.files.delete(fileId=self.id))
 
     def create(self, media_body: MediaFileUpload=None) -> File:
-        return obj.update(self, File.__call(Drive.files.create(body=self.body(), media_body=media_body)))
+        return api.update(self, Drive.files.create(body=self.body(), media_body=media_body))
 
     def content(self) -> bytes:
         request = self.id and Drive.service.files().get_media(fileId=self.id)
@@ -147,7 +144,7 @@ class Query:
 class Drive:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
 
-    service = goog.service('drive', 3)
+    service = api.service('drive', 3)
     files = service.files()
 
     @staticmethod
