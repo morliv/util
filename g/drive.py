@@ -41,14 +41,16 @@ class File:
     FIELDS = ['name', 'mimeType', 'fileId', 'parents']
     FIELDS_REQUEST = ','.join(FIELDS)
 
-    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: Optional[List[str]]=None, **kwargs):
+    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: Optional[List[str]]=None, media_body: Optional[MediaFileUpload]=None):
         self.name = name
         self.mimeType = mimeType or Drive.FOLDER_MIMETYPE
-        self.id = id or kwargs.get('id', None) 
         self.parents = parents
+        self.id = id
+        self.media_body = media_body
+        self.one()
 
-    def get():
-        api.update(Drive.files.get(fileId=obj.id))
+    def get(self):
+        api.update(self, Drive.files.get(fileId=self.id))
 
     def single_parent(self, parent) -> dict:
         body = self.body()
@@ -56,28 +58,29 @@ class File:
         return body
 
     def body(self) -> dict:
-        return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if v}
+        return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if k in self.FIELDS and v}
 
-    def one(self, media_body: MediaFileUpload=None) -> File:
-        return File.first(self.list()) or self.create(media_body)
+    def one(self):
+        breakpoint()
+        api.update(self, File.first(self.list()) or self.create())
 
     def list(self) -> List[File]:
         responses = []
         for parent in self.parents:
             if response := api.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
                 responses += response.get('files', []) 
-        return obj.update(self, responses)
+        return [obj.sync(self, response) for r in responses]
 
     @staticmethod
     def first(files: List[File]) -> Optional[File]:
-        for m in files[1:]: m.delete()
-        return next(iter(files), None)
+        for f in files[1:]: f.delete()
+        return next(iter(files), [])
 
     def delete(self) -> Optional[str]:
         return self.id and api.call(Drive.files.delete(fileId=self.id))
 
-    def create(self, media_body: MediaFileUpload=None) -> File:
-        return api.update(self, Drive.files.create(body=self.body(), media_body=media_body))
+    def create(self) -> File:
+        return api.update(self, Drive.files.create(body=self.body(), media_body=self.media_body))
 
     def content(self) -> bytes:
         request = self.id and Drive.service.files().get_media(fileId=self.id)
@@ -98,8 +101,8 @@ class Map():
     def __init__(self, local, drive: Path=Path('/')):
         self.local = Path(local)
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else Drive.FOLDER_MIMETYPE
-        self.media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
-        self.file = File(self.local.name, mimeType, parents=[File.folder(drive)]).one(self.media)
+        media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
+        self.file = File(self.local.name, mimeType, parents=[File.folder(drive)], media_body=media)
         self.sync()
 
     def sync(self):

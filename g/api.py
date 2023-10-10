@@ -15,42 +15,37 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.file",
 ]
-CREDENTIALS = Path.home() / "util/credentials.json"
-
-
-def token_path():
-    return Path.home() / "token.json"
+DIR = Path(__file__).resolve().parent
+CREDENTIALS = DIR / "credentials.json"
+TOKEN = DIR / "token.json"
 
 def service(service_name, version):
     return build(service_name, "v" + str(version), credentials=creds())
 
 def creds():
     creds = None
-    if token_path().exists():
-        creds = Credentials.from_authorized_user_file(token_path(), SCOPES)
+    if TOKEN.exists():
+        creds = Credentials.from_authorized_user_file(TOKEN, SCOPES)
     if not creds or not creds.valid:
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
             flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS, SCOPES)
             creds = flow.run_local_server(port=0)
-        with open(token_path(), "w") as token:
+        with open(TOKEN, "w") as token:
             token.write(creds.to_json())
     return creds
 
-def update(obj, f: Callable) -> dict:
-    obj.update(obj, call(f)
-
-def call(f: Callable) -> dict:
-    return request(f.execute)
+def establish(obj: type, f: Callable, anew=False) -> type: 
+    return obj.set(obj, request(f), anew)
 
 def request(f: Callable) -> dict:
     try:
-        return f()
+        return f.execute()
     except HttpError as e:
-        handle_response_status(e)
+        handle_response(e)
 
-def handle_response_status(e: HttpError):
+def handle_response(e: HttpError):
     if e.resp.status == 404:
         return None
     raise
