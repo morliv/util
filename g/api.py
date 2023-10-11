@@ -36,8 +36,8 @@ def creds():
             token.write(creds.to_json())
     return creds
 
-def establish(obj: type, f: Callable, anew=False) -> type: 
-    return obj.set(obj, request(f), anew)
+def set(the_obj, f: Callable) -> type:
+    return obj.set(the_obj, request(f))
 
 def request(f: Callable) -> dict:
     try:

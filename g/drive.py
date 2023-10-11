@@ -47,10 +47,11 @@ class File:
         self.parents = parents
         self.id = id
         self.media_body = media_body
+        breakpoint()
         self.one()
 
     def get(self):
-        api.update(self, Drive.files.get(fileId=self.id))
+        api.set(self, Drive.files.get(fileId=self.id))
 
     def single_parent(self, parent) -> dict:
         body = self.body()
@@ -61,26 +62,24 @@ class File:
         return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if k in self.FIELDS and v}
 
     def one(self):
-        breakpoint()
-        api.update(self, File.first(self.list()) or self.create())
+        return self.first(self.list()) or self.create()
 
     def list(self) -> List[File]:
         responses = []
         for parent in self.parents:
-            if response := api.call(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
+            if response := api.request(Drive.files.list(q=Query.from_dict(self.single_parent(parent)))):
                 responses += response.get('files', []) 
-        return [obj.sync(self, response) for r in responses]
+        return [obj.set(self, response, anew=True) for r in responses]
 
-    @staticmethod
-    def first(files: List[File]) -> Optional[File]:
+    def first(self, files: List[File]) -> Optional[File]:
         for f in files[1:]: f.delete()
-        return next(iter(files), [])
+        return obj.set(self, next(iter(files), None))
 
     def delete(self) -> Optional[str]:
-        return self.id and api.call(Drive.files.delete(fileId=self.id))
+        return self.id and Drive.files.delete(fileId=self.id)
 
     def create(self) -> File:
-        return api.update(self, Drive.files.create(body=self.body(), media_body=self.media_body))
+        return api.set(self, Drive.files.create(body=self.body(), media_body=self.media_body))
 
     def content(self) -> bytes:
         request = self.id and Drive.service.files().get_media(fileId=self.id)

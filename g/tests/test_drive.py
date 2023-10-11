@@ -55,28 +55,15 @@ class DupTestCase(LocalFileTestCase):
     
     def setUp(self):
         super().setUp()
-        self.dups = [self.mapped().file for i in range(2)]
+        self.dup = self.mapped().file
         
     def tearDown(self):
         super().tearDown()
-        for dup in self.dups: dup.delete()
+        self.dup.delete()
 
-    def test_first_dup_in_drive(self):
-        self.assertIsNotNone(self.dups[0].get())
-
-    def test_second_dup_in_drive(self):
-        self.assertIsNotNone(self.dups[1].get())
-
-    def one_test(self):
-        return self.dups[0].one()
-
-    def test_one_keeps_dup_1(self):
-        self.one_test()
-        self.assertIsNotNone(self.dups[0].get())
-
-    def test_one_deletes_dup_2(self):
-        self.one_test()
-        self.assertIsNone(self.dups[1].get())
+    def test_list_size_still_1(self):
+        breakpoint()
+        self.assertEquals(len(self.file_map.file.list()), 1)
 
 
 class LocalDirTestCase(test.DirTestCase):
@@ -86,7 +73,7 @@ class LocalDirTestCase(test.DirTestCase):
 
  
 if __name__ == '__main__':
-    single_func_from_class = ['test_one_deletes_dup_2', DupTestCase]
+    single_func_from_class = ['test_list_size_still_1', DupTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)
