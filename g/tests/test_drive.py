@@ -17,7 +17,7 @@ from util.g import drive
 class NoLocalTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.folder = drive.File('Test').create()
+        self.folder = drive.File('Test')
 
     def tearDown(self):
         self.folder.delete() 
@@ -46,7 +46,7 @@ class LocalFileTestCase(test.FileTestCase):
     def test_local_and_drive_are_equivalent(self):
         self.assertTrue(self.file_map.equivalent())
 
-    def test_delete(self):
+    def test_delete(self): 
         self.file_map.file.delete()
         self.assertIsNone(self.file_map.file.get())
 
@@ -62,8 +62,7 @@ class DupTestCase(LocalFileTestCase):
         self.dup.delete()
 
     def test_list_size_still_1(self):
-        breakpoint()
-        self.assertEquals(len(self.file_map.file.list()), 1)
+        self.assertEqual(len(self.file_map.file.list()), 1)
 
 
 class LocalDirTestCase(test.DirTestCase):
@@ -73,7 +72,7 @@ class LocalDirTestCase(test.DirTestCase):
 
  
 if __name__ == '__main__':
-    single_func_from_class = ['test_list_size_still_1', DupTestCase]
+    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)

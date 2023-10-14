@@ -2,7 +2,7 @@ from typing import Optional, Callable
 from functools import partial
 import copy
 
-def set(obj: type, response, anew=False) -> type:
+def set(obj: type, response, anew=False) -> Optional[type]:
     if anew:
         obj = copy.copy(obj)
     if isinstance(response, type(obj)):
@@ -11,6 +11,5 @@ def set(obj: type, response, anew=False) -> type:
         for k, v in response.items():
             if hasattr(obj, k):
                 setattr(obj, k, v)
-    return obj
+        return obj
 
-    
