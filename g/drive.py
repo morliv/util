@@ -42,9 +42,9 @@ class Service:
 
 class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
-    FIELDS= ['name', 'mimeType', 'id', 'parents']
-    REQUEST_FIELDS = ['fileId' if f == 'id' for f in FIELDS]
-    FIELDS_REQUEST = ','.join(FIELDS)
+    FIELDS = ['name', 'mimeType', 'id', 'parents']
+    REQUEST_FIELDS = ['fileId' if f == 'id' else f for f in FIELDS]
+    FIELDS_REQUEST = f"files({','.join(File.FIELDS)})"
 
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], media_body: Optional[MediaFileUpload]=None):
@@ -58,13 +58,18 @@ class File:
     def get(self):
         return api.set(self, Service.files.get(fileId=self.id))
 
-    def single_parent(self, parent) -> dict:
-        body = self.body()
+    def single_parent(self, parent, request=True) -> dict:
+        body = self.request_body() if request else self.body()
         body['parents'] = parent
         return body
 
     def body(self) -> dict:
         return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if k in self.FIELDS and v}
+
+    def request_body(self) -> dict:
+        body = self.body()
+        body.pop('fileId', {})
+        return body
 
     def one(self):
         return self.first(self.list()) or self.create()
@@ -72,12 +77,12 @@ class File:
     def list(self) -> List[File]:
         responses = []
         for parent in self.parents:
-            breakpoint()
-            if response := api.request(Service.files.list(q=Query.from_dict(self.single_parent(parent)), fields=f"files({','.join(File.FIELDS)})")):
-                breakpoint()
-                responses += response.get('files', [])
+            responses += self.children(parent)
         return [obj.set(self, r, anew=True) for r in responses]
 
+    def children(self, parent):
+        return Query(self.single_parent(parent, request=True)).list()
+                
     def first(self, files: List[File]) -> Optional[File]:
         for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
@@ -89,7 +94,7 @@ class File:
         return api.set(self, Service.files.create(body=self.body(), media_body=self.media_body))
 
     def content(self) -> bytes:
-        request = self.id and File.service.files().get_media(fileId=self.id)
+        request = self.id and Service.files.get_media(fileId=self.id)
         fh = io.BytesIO()
         downloader = MediaIoBaseDownload(fh, request)
         done = False
@@ -107,7 +112,6 @@ class File:
         drive_folder_path = Path(drive_folder_path)
         file_lists = {}
         for folder_id in File.folder(drive_folder_path):
-            print(folder_id)
             file_lists[folder_id] = sorted(File.list_file_names_in_folder_by_id(folder_id))
             File.print_file_names(file_lists[folder_id])
         return file_lists
@@ -116,23 +120,6 @@ class File:
     def list_file_names(folder_id: str) -> List[str]:
         files = Service.files_in_by_id(folder_id, 'files(name)')
         return [file['name'] for file in files]
-
-    @staticmethod
-    def files_by_id(folder_id: str='root', fields: str = 'files(id)') -> List[dict]:
-        query = f"'{folder_id}' in parents"
-        files = []
-        page_token = None
-        while True:
-            try:
-                response = api.request(Service.files.list(q=query, pageSize=1000, fields=fields + ',nextPageToken', pageToken=page_token))
-                responses += response.get('files', [])
-                page_token = response.get('nextPageToken', None)
-                if page_token is None:
-                    break
-            except HttpError as e:
-                print(f"Error fetching files for folder ID {folder_id}. Error: {e}")
-                return []
-        return responses
 
     @staticmethod
     def list_matching_files(drive_folder_path: Path, pattern: str):
@@ -165,6 +152,7 @@ class File:
         permissions = File.service.permissions().list(fileId=folder_id).execute()
         for permission in permissions.get('permissions', []):
             print(f"ID: {permission['id']}, Type: {permission['type']}, Role: {permission['role']}")
+
 
 class Map():
     def __init__(self, local, drive: Path=Path('/')):
@@ -203,6 +191,18 @@ class Query:
             if self.key in Query.Clause.IN_KEYS: 
                 return f"'{self.val}' {self.op} {self.key}"
             return f"{self.key} {self.op} '{self.val}'"
+
+    def __init__(self, obj: type):
+        self.string = Query.query(Query.from_dict(vars(obj)))
+
+    @staticmethod
+    def list(query):
+        responses = []
+        pageToken = None
+        while pageToken is not 'end':
+            responses += api.request(Service.files.list(q=query, pageSize=1000, fields=fields + ',nextPageToken', pageToken=pageToken)).get('files', [])
+            pageToken = response.get('nextPageToken', 'end')
+        return responses
 
     @staticmethod
     def from_dict(dictionary: dict):

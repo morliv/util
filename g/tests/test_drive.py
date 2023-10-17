@@ -62,6 +62,7 @@ class DupTestCase(LocalFileTestCase):
         self.dup.delete()
 
     def test_list_size_still_1(self):
+        breakpoint()
         self.assertEqual(len(self.file_map.file.list()), 1)
 
 
@@ -72,7 +73,7 @@ class LocalDirTestCase(test.DirTestCase):
 
  
 if __name__ == '__main__':
-    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
+    single_func_from_class = None #or ['test_list_size_still_1', DupTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)
