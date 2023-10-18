@@ -62,7 +62,6 @@ class DupTestCase(LocalFileTestCase):
         self.dup.delete()
 
     def test_list_size_still_1(self):
-        breakpoint()
         self.assertEqual(len(self.file_map.file.list()), 1)
 
 

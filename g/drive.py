@@ -44,8 +44,6 @@ class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
     FIELDS = ['name', 'mimeType', 'id', 'parents']
     REQUEST_FIELDS = ['fileId' if f == 'id' else f for f in FIELDS]
-    FIELDS_REQUEST = f"files({','.join(File.FIELDS)})"
-
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], media_body: Optional[MediaFileUpload]=None):
         self.name = name
@@ -186,31 +184,34 @@ class Query:
             self.key: str = str(key)
             self.val: str = str(val)
             self.op: str = 'in' if key in Query.Clause.IN_KEYS else str(op)
+            self.string = self.__string()
 
-        def string(self):
+        def __string(self):
             if self.key in Query.Clause.IN_KEYS: 
                 return f"'{self.val}' {self.op} {self.key}"
             return f"{self.key} {self.op} '{self.val}'"
 
-    def __init__(self, obj: type):
-        self.string = Query.query(Query.from_dict(vars(obj)))
+    LIST_FIELDS = f"files({','.join(File.FIELDS)}),nextPageToken"
 
-    @staticmethod
-    def list(query):
-        responses = []
+    def __init__(self, d: dict):
+        self.string = self.__from_dict(d)
+
+    def list(self):
+        results = []
         pageToken = None
         while pageToken is not 'end':
-            responses += api.request(Service.files.list(q=query, pageSize=1000, fields=fields + ',nextPageToken', pageToken=pageToken)).get('files', [])
+            response = api.request(Service.files.list(q=self.string, pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
+            results +=  response.get('files', [])
             pageToken = response.get('nextPageToken', 'end')
-        return responses
+        return results
 
     @staticmethod
-    def from_dict(dictionary: dict):
-        return Query.query([Query.Clause(k, v) for k, v in dictionary.items()])
+    def __from_dict(dictionary: dict):
+        return Query.__string([Query.Clause(k, v) for k, v in dictionary.items()])
 
     @staticmethod
-    def query(clauses: List[Clause], logic_op='and'):
-        return f' {logic_op} '.join([clause.string() for clause in clauses])
+    def __string(clauses: List[Clause], logic_op='and'):
+        return f' {logic_op} '.join([clause.string for clause in clauses])
 
 
 if __name__=="__main__":
