@@ -70,9 +70,10 @@ class File:
         return body
 
     def one(self):
-        return self.first(self.list()) or self.create()
+        return self.first() or self.create()
 
     def list(self) -> List[File]:
+        breakpoint()
         responses = []
         for parent in self.parents:
             responses += self.children(parent)
@@ -81,11 +82,12 @@ class File:
     def children(self, parent):
         return Query(self.single_parent(parent, request=True)).list()
                 
-    def first(self, files: List[File]) -> Optional[File]:
-        for f in files[1:]: f.delete()
+    def first(self) -> Optional[File]:
+        for f in self.list()[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
 
     def delete(self) -> Optional[str]:
+        breakpoint()
         return self.id and api.request(Service.files.delete(fileId=self.id))
 
     def create(self) -> File:
@@ -102,8 +104,12 @@ class File:
 
     @staticmethod
     def folder(path: Path) -> str:
+        return File(id=File.folders(path)).id
+
+    @staticmethod
+    def folders(path: Path) -> Optional[List[str]]:
         path = '/' / Path(path)
-        return File(name=path.name, parents=[File.folder(path.parent)]).one().id if len(path.parts) > 1 else 'root'
+        return File(name=path.name, parents=[File.folders(path.parent)]).id if len(path.parts) > 1 else 'root'
 
     @staticmethod
     def files(drive_folder_path: Path=Path('/')):
@@ -118,16 +124,6 @@ class File:
     def list_file_names(folder_id: str) -> List[str]:
         files = Service.files_in_by_id(folder_id, 'files(name)')
         return [file['name'] for file in files]
-
-    @staticmethod
-    def list_matching_files(drive_folder_path: Path, pattern: str):
-        drive_folder_path = Path(drive_folder_path)
-        file_lists = {}
-        matching_files = []
-        for folder_id in File.folder(drive_folder_path):
-            file_lists[folder_id] = sorted(File.list_file_names_in_folder_by_id(folder_id))
-            matching_files += [name for name in file_lists[folder_id] if fnmatch(name, pattern + '*')]
-        return matching_files
 
     @staticmethod
     def delete_by_pattern(self, pat: str):
@@ -199,7 +195,7 @@ class Query:
     def list(self):
         results = []
         pageToken = None
-        while pageToken is not 'end':
+        while pageToken != 'end':
             response = api.request(Service.files.list(q=self.string, pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
             results +=  response.get('files', [])
             pageToken = response.get('nextPageToken', 'end')
@@ -212,8 +208,4 @@ class Query:
     @staticmethod
     def __string(clauses: List[Clause], logic_op='and'):
         return f' {logic_op} '.join([clause.string for clause in clauses])
-
-
-if __name__=="__main__":
-    main()
 

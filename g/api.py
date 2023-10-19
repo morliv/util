@@ -13,7 +13,7 @@ from util import obj
 # If modifying these scopes, delete token.json
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
-    "https://www.googleapis.com/auth/drive.file",
+    "https://www.googleapis.com/auth/drive",
 ]
 DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
