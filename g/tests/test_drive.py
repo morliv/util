@@ -17,7 +17,7 @@ from util.g import drive
 class NoLocalTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.folder = drive.File('Test')
+        self.folder = drive.File('Test').one()
 
     def tearDown(self):
         self.folder.delete() 
@@ -31,6 +31,7 @@ class LocalFileTestCase(test.FileTestCase):
     def setUp(self):
         super().setUp()
         self.file_map = self.mapped()
+        self.file_map.file.one()
 
     def mapped(self):
         return drive.Map(self.file.name)
@@ -56,14 +57,18 @@ class DupTestCase(LocalFileTestCase):
     def setUp(self):
         super().setUp()
         self.dup = self.mapped().file
+        self.dup.create()
         
     def tearDown(self):
         super().tearDown()
         self.dup.delete()
 
-    def test_list_size_still_1(self):
-        self.assertEqual(len(self.file_map.file.list()), 1)
+    def test_list_size_2(self):
+        self.assertEqual(len(self.dup.list()), 2)
 
+    def test_one(self):
+        self.dup.one()
+        self.assertEqual(len(self.dup.list()), 1)
 
 class LocalDirTestCase(test.DirTestCase):
     

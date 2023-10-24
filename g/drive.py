@@ -1,10 +1,7 @@
-#!/usr/bin/env python3
-
 from __future__ import annotations
-import argparse
 import io
 import hashlib
-from pathlib import Path
+from pathlib import Path, PurePath
 from typing import Optional, List, Callable
 from dataclasses import dataclass, field
 from itertools import chain
@@ -19,23 +16,6 @@ from util import dictionary, function, process, obj
 from util.g import api
 
 
-def main():
-    args = parsed_args()
-    drive_folder_path = Path(args.drive_folder)
-    if args.list_files:
-        Service.files(drive_folder_path)
-    else:
-        Map(Path(args.source).expanduser(), drive_folder_path)
-
-
-def parsed_args():
-    p = argparse.ArgumentParser()
-    for a, k in [(('-l', '--source'), {type: str}),
-              (('-d', '--drive_folder'), {type: str}),
-              (('-f', '--list-files'), {action: 'store_true'})]:
-        p.add_argument(*a, **k)
-    return p.parse_args()
-
 class Service:
     drive = api.service('drive', 3)
     files = drive.files()
@@ -43,7 +23,6 @@ class Service:
 class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
     FIELDS = ['name', 'mimeType', 'id', 'parents']
-    REQUEST_FIELDS = ['fileId' if f == 'id' else f for f in FIELDS]
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], media_body: Optional[MediaFileUpload]=None):
         self.name = name
@@ -51,43 +30,41 @@ class File:
         self.parents = parents or ['root']
         self.id = id
         self.media_body = media_body
-        self.one()
 
     def get(self):
         return api.set(self, Service.files.get(fileId=self.id))
 
-    def single_parent(self, parent, request=True) -> dict:
-        body = self.request_body() if request else self.body()
-        body['parents'] = parent
-        return body
-
-    def body(self) -> dict:
-        return {'fileId' if k == 'id' else k: v for k, v in self.__dict__.items() if k in self.FIELDS and v}
-
-    def request_body(self) -> dict:
-        body = self.body()
-        body.pop('fileId', {})
-        return body
+    def body(self, id=True) -> dict:
+        return {('fileId' if k == 'id' else k): v for k, v in self.__dict__.items() if k in self.FIELDS and v and (id or not k == 'id')}
 
     def one(self):
         return self.first() or self.create()
 
+    def first(self) -> Optional[File]:
+        files = self.list() 
+        for f in files[1:]: f.delete()
+        return obj.set(self, next(iter(files), None))
+
     def list(self) -> List[File]:
-        breakpoint()
         responses = []
         for parent in self.parents:
             responses += self.children(parent)
         return [obj.set(self, r, anew=True) for r in responses]
 
     def children(self, parent):
-        return Query(self.single_parent(parent, request=True)).list()
+        return Query(self.body(parent, id=False)).list()
                 
-    def first(self) -> Optional[File]:
-        for f in self.list()[1:]: f.delete()
-        return obj.set(self, next(iter(files), None))
+    def list(self):
+        results = []
+        pageToken = None
+        while pageToken != 'end':
+            breakpoint()
+            response = api.request(Service.files.list(q=Query(self.body()), pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
+            results +=  response.get('files', [])
+            pageToken = response.get('nextPageToken', 'end')
+        return results
 
     def delete(self) -> Optional[str]:
-        breakpoint()
         return self.id and api.request(Service.files.delete(fileId=self.id))
 
     def create(self) -> File:
@@ -103,30 +80,14 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def folder(path: Path) -> str:
-        return File(id=File.folders(path)).id
-
-    @staticmethod
-    def folders(path: Path) -> Optional[List[str]]:
-        path = '/' / Path(path)
+    def folders(path: PurePath, action: Callable=None) -> Optional[List[File]]:
+        
+        if action:
+            
         return File(name=path.name, parents=[File.folders(path.parent)]).id if len(path.parts) > 1 else 'root'
 
     @staticmethod
-    def files(drive_folder_path: Path=Path('/')):
-        drive_folder_path = Path(drive_folder_path)
-        file_lists = {}
-        for folder_id in File.folder(drive_folder_path):
-            file_lists[folder_id] = sorted(File.list_file_names_in_folder_by_id(folder_id))
-            File.print_file_names(file_lists[folder_id])
-        return file_lists
-
-    @staticmethod
-    def list_file_names(folder_id: str) -> List[str]:
-        files = Service.files_in_by_id(folder_id, 'files(name)')
-        return [file['name'] for file in files]
-
-    @staticmethod
-    def delete_by_pattern(self, pat: str):
+    def list_by_pattern(self, pat: str):
        for response in list_matching_files('root', 'tmp'): File(id=response['id']).delete()
 
     def delete_by_name(self, name: str):
@@ -172,40 +133,35 @@ class Map():
             return hashlib.md5(local_file.read()).hexdigest() == hashlib.md5(self.file.content()).hexdigest()
 
 
-class Query:
-    class Clause:
+class Query(str):
+    class Clause(str):
         IN_KEYS = ['parents']
 
-        def __init__(self, key, val, op='='):
-            self.key: str = str(key)
-            self.val: str = str(val)
-            self.op: str = 'in' if key in Query.Clause.IN_KEYS else str(op)
-            self.string = self.__string()
+        @classmethod
+        def __new__(cls, string):
+            return super(Query.Clause, cls).__new__(cls, string)
 
-        def __string(self):
-            if self.key in Query.Clause.IN_KEYS: 
-                return f"'{self.val}' {self.op} {self.key}"
-            return f"{self.key} {self.op} '{self.val}'"
+        @staticmethod
+        def from_parts(key, val, op):
+            if key in Query.Clause.IN_KEYS: 
+                return f"'{val}' {op} {key}"
+            return  f"{key} {op} '{val}'"
 
     LIST_FIELDS = f"files({','.join(File.FIELDS)}),nextPageToken"
 
-    def __init__(self, d: dict):
-        self.string = self.__from_dict(d)
-
-    def list(self):
-        results = []
-        pageToken = None
-        while pageToken != 'end':
-            response = api.request(Service.files.list(q=self.string, pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
-            results +=  response.get('files', [])
-            pageToken = response.get('nextPageToken', 'end')
-        return results
+    @staticmethod
+    def __typical(dictionary: dict, pat, logic_op):
+        query = Query.concat([Query.expression(k, v) for k, v in dictionary.items()])
+        return Query(f"{query} and name contains {pat}" if pat else query)
 
     @staticmethod
-    def __from_dict(dictionary: dict):
-        return Query.__string([Query.Clause(k, v) for k, v in dictionary.items()])
+    def expression(k, v):
+        if isintance(v, list):
+            return '(' + Query.concat([Clause(f"{k} contains {e}") for e in v], 'or') + ')'
+        return Query.from_parts(k, v)
+        
 
     @staticmethod
-    def __string(clauses: List[Clause], logic_op='and'):
-        return f' {logic_op} '.join([clause.string for clause in clauses])
+    def concat(expressions, logic_op='and'):
+        return f' {logic_op} '.join(expressions) 
 
