@@ -12,7 +12,7 @@ import magic
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
-from util import dictionary, function, process, obj
+from util import dictionary, function, process, obj, path
 from util.g import api
 
 
@@ -45,24 +45,19 @@ class File:
         for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
 
-    def list(self) -> List[File]:
-        responses = []
-        for parent in self.parents:
-            responses += self.children(parent)
-        return [obj.set(self, r, anew=True) for r in responses]
-
-    def children(self, parent):
-        return Query(self.body(parent, id=False)).list()
-                
     def list(self):
         results = []
         pageToken = None
         while pageToken != 'end':
             breakpoint()
-            response = api.request(Service.files.list(q=Query(self.body()), pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
+            response = api.request(Service.files.list(q=Query(self.body(id=False)), pageSize=1000, fields=Query.LIST_FIELDS, pageToken=pageToken))
             results +=  response.get('files', [])
             pageToken = response.get('nextPageToken', 'end')
-        return results
+        return File.files(results)
+
+    @staticmethod
+    def files(responses):
+        return [obj.set(self, r, anew=True) for r in responses]
 
     def delete(self) -> Optional[str]:
         return self.id and api.request(Service.files.delete(fileId=self.id))
@@ -80,11 +75,15 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def folders(path: PurePath, action: Callable=None) -> Optional[List[File]]:
-        
-        if action:
-            
-        return File(name=path.name, parents=[File.folders(path.parent)]).id if len(path.parts) > 1 else 'root'
+    def folders(p: PurePath, action: Callable=lambda f: f.list) -> Optional[List[File]]:
+        if path.top_level(p): return [File(id='root')]
+        if parents := File.folders(p.parent):
+            return list(File(name=path.name, parents=parents).action())
+        return None
+
+    @staticmethod
+    def ids(fs: List[File]):
+        return [f.id for f in fs]
 
     @staticmethod
     def list_by_pattern(self, pat: str):
@@ -92,9 +91,9 @@ class File:
 
     def delete_by_name(self, name: str):
         files = self.list()
-        for file in files:
-            if file.name == name:
-                file.delete()
+        for f in files:
+            if f.name == name:
+                f.delete()
 
     @staticmethod
     def print_file_names(file_names: List[str]) -> None:
@@ -114,10 +113,12 @@ class Map():
         self.local = Path(local)
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else File.FOLDER_MIMETYPE
         media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
-        self.file = File(self.local.name, mimeType, parents=[File.folder(drive)], media_body=media)
+        self.file = File(self.local.name, mimeType, media_body=media)
+        self.file.parents = File.ids(File.folders(drive, self.file.one))
         self.sync()
 
     def sync(self):
+        self.file.one()
         if self.local.is_dir():
             for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name)
 
@@ -135,30 +136,30 @@ class Map():
 
 class Query(str):
     class Clause(str):
-        IN_KEYS = ['parents']
-
-        @classmethod
-        def __new__(cls, string):
-            return super(Query.Clause, cls).__new__(cls, string)
+        OPS = {'has': ['parents']}
 
         @staticmethod
-        def from_parts(key, val, op):
-            if key in Query.Clause.IN_KEYS: 
-                return f"'{val}' {op} {key}"
+        def from_parts(key, val, op='='):
+            op = dictionary.key_of_match_within_values(Query.Clause.OPS, key) or op
             return  f"{key} {op} '{val}'"
 
     LIST_FIELDS = f"files({','.join(File.FIELDS)}),nextPageToken"
 
-    @staticmethod
-    def __typical(dictionary: dict, pat, logic_op):
-        query = Query.concat([Query.expression(k, v) for k, v in dictionary.items()])
-        return Query(f"{query} and name contains {pat}" if pat else query)
+    def __new__(cls, d: dict, pat=None, logic_op='and'):
+        string = Query.concat([Query.expression(k, v) for k, v in d.items()])
+        string = f"{string} and name contains {pat}" if pat else string
+        return super().__new__(cls, string)
 
     @staticmethod
     def expression(k, v):
-        if isintance(v, list):
-            return '(' + Query.concat([Clause(f"{k} contains {e}") for e in v], 'or') + ')'
-        return Query.from_parts(k, v)
+       
+        if isinstance(v, list):
+            clauses = [Query.Clause.from_parts(k, e) for e in v]
+            num_clauses = len(clauses)
+            string = Query.concat(clauses, 'or')
+            return f'({string})' if num_clauses > 1 else string
+                
+        return Query.Clause.from_parts(k, v)
         
 
     @staticmethod
