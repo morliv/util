@@ -136,11 +136,14 @@ class Map():
 
 class Query(str):
     class Clause(str):
-        OPS = {'has': ['parents']}
+        OPS = {'=': ['name', 'mimeType', 'fileId'], 'in': ['parents']}
+        VAL_FIRST_OPS = {'in'}
 
         @staticmethod
-        def from_parts(key, val, op='='):
+        def from_parts(key, val, op=None):
             op = dictionary.key_of_match_within_values(Query.Clause.OPS, key) or op
+            if key in Query.Clause.VAL_FIRST_OPS:
+                return f"'{val}' {op} {key}"
             return  f"{key} {op} '{val}'"
 
     LIST_FIELDS = f"files({','.join(File.FIELDS)}),nextPageToken"
