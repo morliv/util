@@ -26,12 +26,10 @@ class NoLocalTestCase(unittest.TestCase):
         self.assertIsNotNone(self.folder.get())
 
 
-class LocalFileTestCase(test.FileTestCase):
-
+class LocalFileCase(test.FileTestCase):
     def setUp(self):
         super().setUp()
         self.file_map = self.mapped()
-        self.file_map.file.one()
 
     def mapped(self):
         return drive.Map(self.file.name)
@@ -40,6 +38,8 @@ class LocalFileTestCase(test.FileTestCase):
         super().tearDown()
         self.file_map.file.delete()
 
+
+class LocalFileTestCase(LocalFileCase):
     def test_file_update(self):
         self.file.write('Content 2')
         self.assertTrue(self.file_map.equivalent())
@@ -48,12 +48,12 @@ class LocalFileTestCase(test.FileTestCase):
         self.assertTrue(self.file_map.equivalent())
 
     def test_delete(self): 
+        breakpoint()
         self.file_map.file.delete()
-        self.assertIsNone(self.file_map.file.get())
+        self.assertEqual(self.file_map.file.list(), [])
 
 
-class DupTestCase(LocalFileTestCase):
-    
+class DupTestCase(LocalFileCase):
     def setUp(self):
         super().setUp()
         self.dup = self.mapped().file
@@ -77,7 +77,7 @@ class LocalDirTestCase(test.DirTestCase):
 
  
 if __name__ == '__main__':
-    single_func_from_class = None #or ['test_list_size_still_1', DupTestCase]
+    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)

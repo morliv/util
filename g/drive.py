@@ -45,7 +45,7 @@ class File:
         for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
 
-    def list(self):
+    def list(self) -> List[File]:
         results = []
         pageToken = None
         while pageToken != 'end':
@@ -56,8 +56,8 @@ class File:
         return File.files(results)
 
     @staticmethod
-    def files(responses):
-        return [obj.set(self, r, anew=True) for r in responses]
+    def files(responses) -> List(File):
+        return [File(**r) for r in responses]
 
     def delete(self) -> Optional[str]:
         return self.id and api.request(Service.files.delete(fileId=self.id))
@@ -86,8 +86,8 @@ class File:
         return [f.id for f in fs]
 
     @staticmethod
-    def list_by_pattern(self, pat: str):
-       for response in list_matching_files('root', 'tmp'): File(id=response['id']).delete()
+    def matches(folder: PurePath, pat: str):
+        return [f for file_folder in File.folders(folder) for f in file_folder.list() if fnmatch.fnmatch(f.name, f'{pat}*')]
 
     def delete_by_name(self, name: str):
         files = self.list()
@@ -142,7 +142,7 @@ class Query(str):
         @staticmethod
         def from_parts(key, val, op=None):
             op = dictionary.key_of_match_within_values(Query.Clause.OPS, key) or op
-            if key in Query.Clause.VAL_FIRST_OPS:
+            if op in Query.Clause.VAL_FIRST_OPS:
                 return f"'{val}' {op} {key}"
             return  f"{key} {op} '{val}'"
 
@@ -155,16 +155,13 @@ class Query(str):
 
     @staticmethod
     def expression(k, v):
-       
         if isinstance(v, list):
             clauses = [Query.Clause.from_parts(k, e) for e in v]
             num_clauses = len(clauses)
             string = Query.concat(clauses, 'or')
             return f'({string})' if num_clauses > 1 else string
-                
         return Query.Clause.from_parts(k, v)
         
-
     @staticmethod
     def concat(expressions, logic_op='and'):
         return f' {logic_op} '.join(expressions) 
