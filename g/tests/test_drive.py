@@ -11,13 +11,13 @@ import copy
 import pdb
 
 from util import test
-from util.g import drive
+from util.g import File, Map
 
 
 class NoLocalTestCase(unittest.TestCase):
 
     def setUp(self):
-        self.folder = drive.File('Test').one()
+        self.folder = File('Test').one()
 
     def tearDown(self):
         self.folder.delete() 
@@ -32,7 +32,7 @@ class LocalFileCase(test.FileTestCase):
         self.file_map = self.mapped()
 
     def mapped(self):
-        return drive.Map(self.file.name)
+        return Map(self.file.name)
 
     def tearDown(self):
         super().tearDown()
@@ -48,9 +48,8 @@ class LocalFileTestCase(LocalFileCase):
         self.assertTrue(self.file_map.equivalent())
 
     def test_delete(self): 
-        breakpoint()
         self.file_map.file.delete()
-        self.assertEqual(self.file_map.file.list(), [])
+        self.assertEqual(self.file_map.file.matches(), [])
 
 
 class DupTestCase(LocalFileCase):
@@ -64,20 +63,21 @@ class DupTestCase(LocalFileCase):
         self.dup.delete()
 
     def test_list_size_2(self):
-        self.assertEqual(len(self.dup.list()), 2)
+        self.assertEqual(len(self.dup.matches()), 2)
 
     def test_one(self):
         self.dup.one()
-        self.assertEqual(len(self.dup.list()), 1)
+        self.assertEqual(len(self.dup.matches()), 1)
+
 
 class LocalDirTestCase(test.DirTestCase):
     
     def test_syncs(self):
-        drive.Map(self.dir_path)
+        Map(self.dir_path)
 
  
 if __name__ == '__main__':
-    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
+    single_func_from_class = None or ['test_list_size_2', DupTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)

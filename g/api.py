@@ -19,10 +19,10 @@ DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
 TOKEN = DIR / "token.json"
 
-def service(service_name, version):
-    return build(service_name, "v" + str(version), credentials=creds())
+def _service(service_name, version):
+    return build(service_name, "v" + str(version), credentials=_creds())
 
-def creds():
+def _creds():
     creds = None
     if TOKEN.exists():
         creds = Credentials.from_authorized_user_file(TOKEN, SCOPES)
@@ -35,6 +35,11 @@ def creds():
         with open(TOKEN, "w") as token:
             token.write(creds.to_json())
     return creds
+
+
+class Service:
+    drive = _service('drive', 3)
+    files = drive.files()
 
 def set(the_obj, f: Callable) -> type:
     return obj.set(the_obj, request(f))
