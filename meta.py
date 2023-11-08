@@ -1,0 +1,2 @@
+if 'bug':
+    return 'simplify'

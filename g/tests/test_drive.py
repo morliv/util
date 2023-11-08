@@ -11,7 +11,7 @@ import copy
 import pdb
 
 from util import test
-from util.g import File, Map
+from g import File, Map
 
 
 class NoLocalTestCase(unittest.TestCase):
@@ -77,7 +77,7 @@ class LocalDirTestCase(test.DirTestCase):
 
  
 if __name__ == '__main__':
-    single_func_from_class = None or ['test_list_size_2', DupTestCase]
+    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)

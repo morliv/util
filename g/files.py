@@ -19,13 +19,14 @@ from util.g import api, Service, Query
 class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
     FIELDS = ['name', 'mimeType', 'id', 'parents']
-    LIST_FIELDS = f"files({','.join(FIELDS)}),nextPageToken"
+    LIST_FIELDS = f"files({','.join(FIELDS + ['owners'])}),nextPageToken"
 
-    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], media_body: Optional[MediaFileUpload]=None):
+    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], owners: List[str]=['me'], media_body: Optional[MediaFileUpload]=None):
         self.name = name
         self.mimeType = mimeType or File.FOLDER_MIMETYPE
-        self.parents = parents or ['root']
         self.id = id
+        self.parents = parents or ['root']
+        self.owners = owners
         self.media_body = media_body
 
     def get(self):
