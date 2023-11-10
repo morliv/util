@@ -23,7 +23,7 @@ class File:
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], owners: List[str]=['me'], media_body: Optional[MediaFileUpload]=None):
         self.name = name
-        self.mimeType = mimeType or File.FOLDER_MIMETYPE
+        self.mimeType = mimeType
         self.id = id
         self.parents = parents or ['root']
         self.owners = owners
@@ -33,7 +33,10 @@ class File:
         return api.set(self, Service.files.get(fileId=self.id))
 
     def body(self, id=True) -> dict:
-        return {('fileId' if k == 'id' else k): v for k, v in self.__dict__.items() if k in self.FIELDS and v and (id or not k == 'id')}
+        vars = self.__dict__.items()
+        if 'owners' in vars and isinstance(vars['owners'], dict):
+           vars['owners'] = 'me' 
+        return {('fileId' if k == 'id' else k): v for k, v in vars if k in self.FIELDS and v and (id or not k == 'id')}
 
     def one(self):
         return self.first() or self.create()
@@ -57,11 +60,11 @@ class File:
             pageToken = response.get('nextPageToken', 'end')
         return File.files(results)
 
-    @staticmethod
-    def prefixed(pat: str, query: Query):
-        if not query: query = Query()
-        files = File.list(query.from_components(pat=pat))
-        return list(filter(lambda s: s.startswith(pat), files))
+    def prefixed(self, pattern: str):
+        query_dict = self.body()
+        if 'name' in query_dict: query_dict.pop('name')
+        files = File.list(Query.from_components(query_dict, pattern=pattern))
+        return [f for f in files if f.name.startswith(pattern)]
 
     @staticmethod
     def files(responses) -> List(File):

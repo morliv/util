@@ -9,12 +9,12 @@ class Query(str):
 
         @staticmethod
         def from_parts(key, val, op=None):
-            op = dictionary.key_of_match_within_values(Query.Clause.OPS, key) or op
+            op = op or dictionary.key_of_match_within_values(Query.Clause.OPS, key)
             return Query.Clause(f"'{val}' {op} {key}" if op in Query.Clause.VAL_FIRST_OPS else f"{key} {op} '{val}'")
 
         @staticmethod
         def name_contains_pattern(p: str) -> Query.clause:
-            return Query.Clause(f'name contains {p}')
+            return Query.Clause.from_parts('name', p, 'contains')
 
     @staticmethod
     def from_components(d: dict=None, pattern=None, logic_op='and'): 

@@ -1,12 +1,19 @@
 #!/usr/bin/env python3
 
+import sys
 import os
 from pathlib import Path, PurePath
-from IPython import embed
+from IPython import get_ipython, embed
 
-from drive import *
+sys.path.append(str(Path.cwd().resolve()))
 
+from util.g import *
 
-os.chdir(Path.home() / 'util/g')
+ipython = get_ipython()
+
+if ipython:
+    ipython.magic('load_ext autoreload')
+    ipython.magic('autoreload 2')
+
 embed()
 
