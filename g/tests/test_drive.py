@@ -26,20 +26,22 @@ class NoLocalTestCase(unittest.TestCase):
         self.assertIsNotNone(self.folder.get())
 
 
-class LocalFileCase(test.FileTestCase):
-    def setUp(self):
-        super().setUp()
-        self.file_map = self.mapped()
+def file_case(test_case):
+    class FileCase(test_case):
+        def setUp(self):
+            super().setUp()
+            self.file_map = self.mapped()
 
-    def mapped(self):
-        return Map(self.file.name)
+        def mapped(self):
+            return Map(self.file.name)
 
-    def tearDown(self):
-        super().tearDown()
-        self.file_map.file.delete()
+        def tearDown(self):
+            super().tearDown()
+            self.file_map.file.delete()
+    return FileCase
 
 
-class LocalFileTestCase(LocalFileCase):
+class LocalFileTestCase(test_case(FileCase)):
     def test_file_update(self):
         self.file.write('Content 2')
         self.assertTrue(self.file_map.equivalent())
@@ -70,7 +72,7 @@ class DupTestCase(LocalFileCase):
         self.assertEqual(len(self.dup.matches()), 1)
 
 
-class LocalDirTestCase(test.DirTestCase):
+class LocalDirTestCase(test_case(test.DirTestCase)):
     
     def test_syncs(self):
         Map(self.dir_path)
