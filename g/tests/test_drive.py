@@ -53,7 +53,6 @@ class LocalFileTestCase(LocalFileTestCaseMixin):
         self.assertTrue(self.file_map.equivalent())
 
     def test_delete(self): 
-        breakpoint()
         self.file_map.file.delete()
         self.assertEqual(self.file_map.file.matches(), [])
 
@@ -92,20 +91,17 @@ class LocalDirWithFileTestCase(test.DirWithFileCase):
 
     def mapped(self):
         return dictionary.recursive_map(self.dir['dir'], to_map)
-        
+ 
     def test_folder(self):
         breakpoint()
         self.assertEqual(vars(self.file), vars(self.dir_maps['dir'].get()))
 
-        
+ 
 if __name__ == '__main__':
-    single_func_from_class = None #or ['test_list_size_2', DupTestCase]
+    hierarchy = f'{Path(__file__).stem}'#.DupTestCase' #.test_list_size_2'
     try:
-        if single_func_from_class:
-            suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)
-        else:
-            loader = test.OrderedTestLoader()
-            suite = loader.loadTestsFromModule(sys.modules[__name__])
+        loader = test.OrderedTestLoader()
+        suite = loader.loadTestsFromName(hierarchy)
         unittest.TextTestRunner(failfast=True).run(suite)
     except Exception:
         extype, value, tb = sys.exc_info()
