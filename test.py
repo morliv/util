@@ -21,20 +21,17 @@ class FileTestCase(unittest.TestCase):
 class DirTestCase(unittest.TestCase):
     
     def setUp(self):
-        self.dir = tempfile.TemporaryDirectory()
-        self.dir_path = Path(self.dir.name)
+        self.file = tempfile.TemporaryDirectory()
 
     def tearDown(self):
-        self.dir.cleanup()
+        self.file.cleanup()
 
 
-class DirWithFileTestCase(DirTestCase):
-
+class DirWithFileCase(DirTestCase):
     def setUp(self):
-        super().setUp()
-        self.file_path = self.dir_path / 'testfile.txt'
-        with open(self.file_path, 'w') as f:
-            f.write('Content')
+       super().setUp()
+       self.dir = {'dir': self.file,
+                   'file': tempfile.NamedTemporaryFile(dir=self.file.name, delete=False)}
 
 
 class OrderedTestLoader(unittest.TestLoader):

@@ -43,7 +43,7 @@ class File:
 
     def first(self) -> Optional[File]:
         files = self.matches() 
-        for f in files[1:]:f.delete()
+        for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
 
     def matches(self) -> List[File]:
@@ -86,15 +86,13 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def folders(p: PurePath, action: Callable=lambda f: f.list) -> List[File]:
-        if path.top_level(p): return [File(id='root')]
+    def folders(p: PurePath, action: str='list') -> List[str]:
+        if path.top_level(p): return ['root']
         if parents := File.folders(p.parent):
-            return list(File(name=path.name, parents=parents).action())
+            f = File(name=p.name, parents=parents)
+            chosen = getattr(f, action)()
+            return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
         return []
-
-    @staticmethod
-    def ids(fs: List[File]):
-        return [f.id for f in fs]
 
     def delete_by_name(self, name: str):
         files = self.matches()
@@ -116,16 +114,17 @@ class File:
 
 
 class Map():
-    def __init__(self, local, drive: Path=Path('/')):
+    def __init__(self, local, drive: Path=Path('/'), file_action='one'):
         self.local = Path(local)
+        self.drive = drive
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else File.FOLDER_MIMETYPE
         media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
         self.file = File(self.local.name, mimeType, media_body=media)
-        self.file.parents = File.ids(File.folders(drive, self.file.one))
-        self.sync()
+        self.file.parents = File.folders(drive, file_action)
+        self.sync(file_action)
 
-    def sync(self):
-        self.file.one()
+    def sync(self, action='one'):
+        getattr(self.file, action)()
         if self.local.is_dir():
             for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name)
 

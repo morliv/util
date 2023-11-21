@@ -9,4 +9,10 @@ def key_of_match_within_values(d, val):
         if val in list_vals:
             return k
     return None
+
+def recursive_map(value, func):
+    if isinstance(value, dict):
+        return {k: recursive_map(v, func) for k, v in value.items()}
+    else:
+        return func(value)
         

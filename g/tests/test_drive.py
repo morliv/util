@@ -10,7 +10,7 @@ import shutil
 import copy
 import pdb
 
-from util import test
+from util import dictionary, test
 from g import File, Map
 
 
@@ -32,8 +32,8 @@ def file_case(test_case):
             super().setUp()
             self.file_map = self.mapped()
 
-        def mapped(self):
-            return Map(self.file.name)
+        def mapped(self, action='one'):
+            return Map(self.file.name, file_action=action)
 
         def tearDown(self):
             super().tearDown()
@@ -41,7 +41,10 @@ def file_case(test_case):
     return FileCase
 
 
-class LocalFileTestCase(test_case(FileCase)):
+LocalFileTestCaseMixin = file_case(test.FileTestCase)
+LocalDirTestCaseMixin = file_case(test.DirTestCase)
+
+class LocalFileTestCase(LocalFileTestCaseMixin):
     def test_file_update(self):
         self.file.write('Content 2')
         self.assertTrue(self.file_map.equivalent())
@@ -50,15 +53,15 @@ class LocalFileTestCase(test_case(FileCase)):
         self.assertTrue(self.file_map.equivalent())
 
     def test_delete(self): 
+        breakpoint()
         self.file_map.file.delete()
         self.assertEqual(self.file_map.file.matches(), [])
 
 
-class DupTestCase(LocalFileCase):
+class DupTestCase(LocalFileTestCaseMixin):
     def setUp(self):
         super().setUp()
-        self.dup = self.mapped().file
-        self.dup.create()
+        self.dup = self.mapped("create").file
         
     def tearDown(self):
         super().tearDown()
@@ -72,14 +75,31 @@ class DupTestCase(LocalFileCase):
         self.assertEqual(len(self.dup.matches()), 1)
 
 
-class LocalDirTestCase(test_case(test.DirTestCase)):
+class LocalDirTestCase(LocalDirTestCaseMixin):
     
-    def test_syncs(self):
-        Map(self.dir_path)
+    def test_match(self):
+        self.assertEqual(vars(self.file_map.file), vars(self.file_map.file.get()))
 
- 
+
+def to_map(temp_file):
+    return Map(temp_file.name)
+
+class LocalDirWithFileTestCase(test.DirWithFileCase):
+    def setUp(self):
+        super().setUp()
+        breakpoint()
+        self.dir_maps = self.mapped()
+
+    def mapped(self):
+        return dictionary.recursive_map(self.dir['dir'], to_map)
+        
+    def test_folder(self):
+        breakpoint()
+        self.assertEqual(vars(self.file), vars(self.dir_maps['dir'].get()))
+
+        
 if __name__ == '__main__':
-    single_func_from_class = None #or ['test_delete', LocalFileTestCase]
+    single_func_from_class = None #or ['test_list_size_2', DupTestCase]
     try:
         if single_func_from_class:
             suite = unittest.TestLoader().loadTestsFromName(*single_func_from_class)
