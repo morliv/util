@@ -1,3 +1,8 @@
+def remove(d: dict, keys):
+    for k in keys:
+        d.pop(k)
+    return d
+
 def replace_key(dictionary: dict, previous: str, new: str) -> dict:
     if previous in dictionary:
         dictionary[new] = dictionary[previous]

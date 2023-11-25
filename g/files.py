@@ -126,7 +126,8 @@ class Map():
     def sync(self, action='one'):
         getattr(self.file, action)()
         if self.local.is_dir():
-            for p in self.local.iterdir(): Map(local=p, drive=self.drive / p.name)
+           for p in self.local.iterdir():
+               Map(local=p, drive=self.drive / p.name)
 
     def list(self) -> List[File]:
         equivalent, matching_metadata = [], []

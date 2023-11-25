@@ -1,6 +1,8 @@
+import copy
 from typing import Optional, Callable
 from functools import partial
-import copy
+
+from util import dictionary as d
 
 def set(obj: type, response, anew=False) -> Optional[type]:
     if anew:
@@ -13,3 +15,8 @@ def set(obj: type, response, anew=False) -> Optional[type]:
                 setattr(obj, k, v)
         return obj
 
+def dictionary(obj: type, ignore=[]):
+    return d.remove(vars(obj), ignore)
+
+def equalAttributes(first: type, second: type, ignore=[]):
+    first = vars(first)

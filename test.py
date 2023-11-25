@@ -1,9 +1,14 @@
 import tempfile
 from pathlib import Path
+from typing import Any
 import unittest
 
 
-class FileTestCase(unittest.TestCase):
+class TestCase(unittest.TestCase):
+    def assertEqualAttributes(self, first: type, second: type, msg: Any = None) -> None:
+        return self.assertEqual(vars(first), vars(second), msg)
+
+class FileTestCase(TestCase):
 
     def setUp(self):
         self.file = tempfile.NamedTemporaryFile(mode='w+t')
@@ -18,7 +23,7 @@ class FileTestCase(unittest.TestCase):
         self.file.close()
 
 
-class DirTestCase(unittest.TestCase):
+class DirTestCase(TestCase):
     
     def setUp(self):
         self.file = tempfile.TemporaryDirectory()
@@ -30,8 +35,8 @@ class DirTestCase(unittest.TestCase):
 class DirWithFileCase(DirTestCase):
     def setUp(self):
        super().setUp()
-       self.dir = {'dir': self.file,
-                   'file': tempfile.NamedTemporaryFile(dir=self.file.name, delete=False)}
+       self.files = {'dir': self.file,
+                     'file': tempfile.NamedTemporaryFile(dir=self.file.name, delete=False)}
 
 
 class OrderedTestLoader(unittest.TestLoader):
