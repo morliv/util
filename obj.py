@@ -15,8 +15,8 @@ def set(obj: type, response, anew=False) -> Optional[type]:
                 setattr(obj, k, v)
         return obj
 
+def equal_attributes(first: type, second: type, ignore=[]):
+    return dictionary(first, ignore) == dictionary(second, ignore)
+
 def dictionary(obj: type, ignore=[]):
     return d.remove(vars(obj), ignore)
-
-def equalAttributes(first: type, second: type, ignore=[]):
-    first = vars(first)

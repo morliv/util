@@ -90,6 +90,8 @@ class LocalDirWithFileTestCase(test.DirWithFileCase):
         breakpoint()
         self.dir_maps = Map(self.file.name)
 
+    def test_local_matches_drive(self):
+        self.assertEqualAttributes(self.
  
 if __name__ == '__main__':
     error.react(main)
