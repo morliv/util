@@ -81,7 +81,21 @@ class DupTestCase(LocalFileTestCaseMixin):
 class LocalDirTestCase(LocalDirTestCaseMixin):
     
     def test_match(self):
-        self.assertEqual(vars(self.map.file), vars(self.file_map.file.get()))
+        self.assertEqualAttributes(self.map.file, self.file_map.file.get())
+
+def identical(tempfile, f: File):
+    temp_path = Path(tempfile.name)
+    if not identical_file(temp_path, f):
+        return False
+    if temp_path.is_dir():
+        for p in temp_path.iterdir():
+
+    return True
+
+def identical_file(p: Path, f: File):
+    with open(p) as l:
+        return p.name == f.name and l.read() == f.content()
+    
 
 
 class LocalDirWithFileTestCase(test.DirWithFileCase):
@@ -91,7 +105,7 @@ class LocalDirWithFileTestCase(test.DirWithFileCase):
         self.dir_maps = Map(self.file.name)
 
     def test_local_matches_drive(self):
-        self.assertEqualAttributes(self.
+        self.assertEqualAttributes(self.file, self.dir_maps
  
 if __name__ == '__main__':
     error.react(main)

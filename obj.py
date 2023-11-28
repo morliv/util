@@ -15,7 +15,7 @@ def set(obj: type, response, anew=False) -> Optional[type]:
                 setattr(obj, k, v)
         return obj
 
-def equal_attributes(first: type, second: type, ignore=[]):
+def eq_attributes(first: type, second: type, ignore=[]):
     return dictionary(first, ignore) == dictionary(second, ignore)
 
 def dictionary(obj: type, ignore=[]):

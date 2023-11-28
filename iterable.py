@@ -1,13 +1,18 @@
-def one_to_one(iter1, iter2, condition):
-    s1, s2 = set(iter1), set(iter2)
-    for e1 in s1:
-        match = None
-        for e2 in s2:
-            if condition(e1, e2):
-                s2.discard(e2)
-                match = True
-        if not match:
-            return False
-    return True
+class Comparative:
+    def __init__(self, domain, codomain, condition) -> None:
+        self.domain, self.codomain = list(domain), list(codomain)
+        self.condition = condition
 
-            
+    def one_to_one(self):
+        for e1 in self.domain:
+            match = None
+            for e2 in self.codomain:
+                if self.condition(e1, e2):
+                    self.codomain.remove(e2)
+                    match = True
+            if not match:
+                return False
+        return True
+
+    def bijection(self):
+        return len(self.domain) == len(self.codomain) and self.one_to_one()
