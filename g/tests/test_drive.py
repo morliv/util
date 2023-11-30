@@ -8,7 +8,7 @@ import os
 import shutil
 import copy
 
-from util import dictionary, test, error
+from util import dictionary, test, error, iterable
 from g import File, Map
 
 
@@ -83,19 +83,17 @@ class LocalDirTestCase(LocalDirTestCaseMixin):
     def test_match(self):
         self.assertEqualAttributes(self.map.file, self.file_map.file.get())
 
-def identical(tempfile, f: File):
-    temp_path = Path(tempfile.name)
-    if not identical_file(temp_path, f):
-        return False
-    if temp_path.is_dir():
-        for p in temp_path.iterdir():
+def identical(p, f: File):
+    if p.is_file():
+        return identical_file(p, f)
+    if bijection := iterable.Comparative(p.iterdir(), f.parents, identical_file).bijection():
+        return all(identical(sub_p, sub_f) for sub_p, sub_f in bijection)
+    return False
 
-    return True
-
-def identical_file(p: Path, f: File):
-    with open(p) as l:
-        return p.name == f.name and l.read() == f.content()
-    
+def identical_file(p: Path, id: str):
+    f = File(id)
+    with open(p) as local:
+        return p.name == f.name and local.read() == f.content()
 
 
 class LocalDirWithFileTestCase(test.DirWithFileCase):

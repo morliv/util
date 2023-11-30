@@ -4,17 +4,15 @@ import itertools
 
 from util.iterable import Comparative
 
-def eq_chr(i, char):
-    return chr(i) == char
 
 class TestSets(TestCase):
     def test_sets(self):
-        Params = namedtuple('Params', ['function_type', 'domain', 'codomain'])
+        Params = namedtuple('Params', ['function_type', 'domain', 'range'])
         sets = itertools.product([Comparative.one_to_one, Comparative.bijection],
                                  [{0}, {1}, {0, 1}],
                                  [{'\x00'}, {'\x01'}, {'\x00', '\x01'}])
-        sets = map(Params._make, sets)
-        actuals = [s.function_type(s.domain, s.codomain) for s in sets]
+        sets = list(map(Params._make, list(sets)))
+        actuals = [s.function_type(Comparative(s.domain, s.range, chr)) is not None for s in sets]
         results = [True, False, True,
                    False, True, True,
                    False, False, True,
@@ -22,6 +20,6 @@ class TestSets(TestCase):
                    True, False, False,
                    False, True, False,
                    False, False, True]
-        for i in enumerate(sets):
-            with self.subTest(f'{sets[i]} and {results[i]}'):
+        for i, s in enumerate(sets):
+            with self.subTest(f'{s} and {results[i]}'):
                 self.assertEqual(actuals[i], results[i])
