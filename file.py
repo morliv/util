@@ -5,31 +5,35 @@ from pathlib import Path
 from typing import List
 
 
-def temp_file(self, content, root=None):
+def temp_file(self, name, content, root=None):
     file = tempfile.NamedTemporaryFile(mode='w+t', dir=root, delete=False)
     file.write(content)
     file.flush()
     return file
  
-class Dir:
-    def __init__(self, structure={}, name=None, dir=None):
+class Structure:
+    def __init__(self, structure={}, dir=None):
         self.structure = structure
-        self.name = name
-        self.dir = dir
-        self.f = tempfile.TemporaryDirectory(name=name, dir=dir)
-        self.files = self._files()
+        files = self._files()
     
     def _files(self):
-        return [self._file(name, content) for name, content
-                in self.structure.items()]
-    
+        return [self._file(name, content) for name, content in \
+                self.structure.items()]
+
     def _file(self, name, content):
-        return Dir(content, name, self.name) if isinstance(content, dict) else \
-            temp_file(name, dir)
+        return Dir(name, content) \
+            if isinstance(content, dict) else \
+            temp_file(name, content)
 
     def clean(self):
         for f in self.files:
-            f.clean() if isinstance(f, Dir) else f.unlink()
+            f.clean() if isinstance(f, Dir) else f.close()
+
+class Dir():
+    def __init__(self, name=None, dir=None, structure={}):
+        self.f = tempfile.TemporaryDirectory(name=name, dir=dir)
+        self.structure = structure
+    
 
 def remove_occurances(string, file_path):
     with open(file_path, "r") as input_file:

@@ -19,7 +19,7 @@ def main():
     unittest.TextTestRunner(failfast=True).run(suite)
 
 
-class NoLocalTestCase(unittest.TestCase):
+class NoLocalTestCase(test.TestCase):
 
     def setUp(self):
         self.folder = File('Test').one()
@@ -30,6 +30,11 @@ class NoLocalTestCase(unittest.TestCase):
     def test_creates_folder(self):
         self.assertIsNotNone(self.folder.get())
 
+
+class MapTestCase(test.FileSystemTestCase):
+    def setUp(self):
+        super().setUp()
+        self.map = Map(self.structure)
 
 def file_case(test_case):
     class FileCase(test_case):
