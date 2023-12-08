@@ -19,7 +19,6 @@ from util.g import api, Service, Query
 class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
     FIELDS = ['name', 'mimeType', 'id', 'parents']
-    LIST_FIELDS = f"files({','.join(FIELDS + ['owners'])}),nextPageToken"
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], owners: List[str]=['me'], media_body: Optional[MediaFileUpload]=None):
         self.name = name
@@ -48,6 +47,8 @@ class File:
 
     def matches(self) -> List[File]:
         return File.list(Query.from_components(self.body(id=False)))
+        
+    LIST_FIELDS = f"files({','.join(FIELDS + ['owners'])}),nextPageToken"
 
     @staticmethod
     def list(query) -> List[File]:
