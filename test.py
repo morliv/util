@@ -8,23 +8,42 @@ from util import obj
 class TestCase(unittest.TestCase):
     
     def assertEqualAttributes(self, first: type, second: type, msg: Any = None, ignore=[]) -> None:
-        return self.assertTrue(obj.equal_attributes(first, second, ignore))
-    
+        return self.assertTrue(obj.eq_attributes(first, second, ignore))
+ 
 
-class FileTestCase(TestCase):
+class FileSystemTestCase(TestCase):
+    def setUp(self, file_structure):
+        self.structure = self.create_structure(file_structure)
 
-    def setUp(self):
-        self.file = tempfile.NamedTemporaryFile(mode='w+t')
-        self.write()
-
-    def write(self, content='Content'):
-        self.content = content
-        self.file.write(self.content)
-        self.file.flush()
+    def create_structure(self, structure, root=None):
+        structure = {}
+        for name, content in structure.items():
+            if isinstance(content, dict):
+                dir = tempfile.TemporaryDirectory(dir=root)
+                structure[name] = self.create_structure(content, root=dir.name)
+            else:
+                file = tempfile.NamedTemporaryFile(mode='w+t', dir=root, delete=False)
+                file.write(content)
+                file.flush()
+                structure[name] = file
+        return structure
 
     def tearDown(self):
-        self.file.close()
+        self.tearDownStructure()
+    
+    def tearDownStructure(self, content):
+        for name, content in self.structure.items():
+            if isinstance(content, dict):
+                self.tearDownStructure(content)
+            else:
+                content.name.unlink()
+                content.close()
 
+class FileTestCase(FileSystemTestCase):
+
+    def setUp(self):
+        super().setUp({'file': 'Content'})
+        
 
 class DirTestCase(TestCase):
     

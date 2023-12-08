@@ -55,6 +55,9 @@ class File:
         pageToken = None
         while pageToken != 'end':
             response = api.request(Service.files.list(q=query, pageSize=1000, fields=File.LIST_FIELDS, pageToken=pageToken))
+            print(f'{pageToken = }\n{query = }\n{response = }\n')
+            if not response:
+                breakpoint()
             new_files = response.get('files', [])
             results += new_files
             pageToken = response.get('nextPageToken', 'end')
@@ -114,14 +117,14 @@ class File:
 
 
 class Map():
-    def __init__(self, local, drive: Path=Path('/'), file_action='one'):
+    def __init__(self, local, drive: Path=Path('/'), action='one'):
         self.local = Path(local)
         self.drive = drive
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else File.FOLDER_MIMETYPE
         media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
         self.file = File(self.local.name, mimeType, media_body=media)
-        self.file.parents = File.folders(drive, file_action)
-        self.sync(file_action)
+        self.file.parents = File.folders(drive, action)
+        self.sync(action)
 
     def sync(self, action='one'):
         getattr(self.file, action)()
@@ -139,4 +142,3 @@ class Map():
     def equivalent(self) -> bool:
         with open(self.local, 'rb') as local_file:
             return hashlib.md5(local_file.read()).hexdigest() == hashlib.md5(self.file.content()).hexdigest()
-

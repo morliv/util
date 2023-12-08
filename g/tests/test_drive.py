@@ -64,7 +64,7 @@ class DupTestCase(LocalFileTestCaseMixin):
 
     def setUp(self):
         super().setUp()
-        self.dup = Map(self.file.name, "create").file
+        self.dup = Map(self.file.name, action="create").file
         
     def tearDown(self):
         super().tearDown()
@@ -81,7 +81,8 @@ class DupTestCase(LocalFileTestCaseMixin):
 class LocalDirTestCase(LocalDirTestCaseMixin):
     
     def test_match(self):
-        self.assertEqualAttributes(self.map.file, self.file_map.file.get())
+        self.assertEqualAttributes(self.map.file, self.map.file.get())
+
 
 def identical(p, f: File):
     if p.is_file():
@@ -98,12 +99,12 @@ def identical_file(p: Path, id: str):
 
 class LocalDirWithFileTestCase(test.DirWithFileCase):
     def setUp(self):
-        super().setUp()
         breakpoint()
-        self.dir_maps = Map(self.file.name)
+        super().setUp()
+        self.map = Map(self.file.name)
 
     def test_local_matches_drive(self):
-        self.assertEqualAttributes(self.file, self.dir_maps
+        self.assertTrue(identical(self.file, self.map.file))
  
 if __name__ == '__main__':
     error.react(main)
