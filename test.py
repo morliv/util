@@ -15,19 +15,6 @@ class FileSystemTestCase(TestCase):
     def setUp(self, file_structure):
         self.structure = self.create_structure(file_structure)
 
-    def create_structure(self, structure, root=None):
-        structure = {}
-        for name, content in structure.items():
-            if isinstance(content, dict):
-                dir = tempfile.TemporaryDirectory(dir=root)
-                structure[name] = self.create_structure(content, root=dir.name)
-            else:
-                file = tempfile.NamedTemporaryFile(mode='w+t', dir=root, delete=False)
-                file.write(content)
-                file.flush()
-                structure[name] = file
-        return structure
-
     def tearDown(self):
         self.tearDownStructure()
     
