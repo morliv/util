@@ -9,6 +9,7 @@ import shutil
 import copy
 
 from util import dictionary, test, error, iterable
+from util.tests.test_file import FileSystemTestCase
 from g import File, Map
 
 
@@ -20,7 +21,6 @@ def main():
 
 
 class NoLocalTestCase(test.TestCase):
-
     def setUp(self):
         self.folder = File('Test').one()
 
@@ -31,10 +31,11 @@ class NoLocalTestCase(test.TestCase):
         self.assertIsNotNone(self.folder.get())
 
 
-class MapTestCase(test.FileSystemTestCase):
+class MapTestCase(FileSystemTestCase):
     def setUp(self):
         super().setUp()
         self.map = Map(self.structure)
+
 
 def file_case(test_case):
     class FileCase(test_case):

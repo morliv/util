@@ -1,52 +1,21 @@
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 import unittest
 
-from util import obj
+from util import obj, file
 
 class TestCase(unittest.TestCase):
-    
     def assertEqualAttributes(self, first: type, second: type, msg: Any = None, ignore=[]) -> None:
-        return self.assertTrue(obj.eq_attributes(first, second, ignore))
+        self.assertTrue(obj.eq_attributes(first, second, ignore))
+    
+    def truth(self, assertMethod: Callable, *args, **kwargs):
+        try:
+            assertMethod(*args, **kwargs)
+            return True
+        except:
+            return False
  
-
-class FileSystemTestCase(TestCase):
-    def setUp(self, file_structure):
-        self.structure = self.create_structure(file_structure)
-
-    def tearDown(self):
-        self.tearDownStructure()
-    
-    def tearDownStructure(self, content):
-        for name, content in self.structure.items():
-            if isinstance(content, dict):
-                self.tearDownStructure(content)
-            else:
-                content.name.unlink()
-                content.close()
-
-class FileTestCase(FileSystemTestCase):
-
-    def setUp(self):
-        super().setUp({'file': 'Content'})
-        
-
-class DirTestCase(TestCase):
-    
-    def setUp(self):
-        self.file = tempfile.TemporaryDirectory()
-
-    def tearDown(self):
-        self.file.cleanup()
-
-
-class DirWithFileCase(DirTestCase):
-    def setUp(self):
-       super().setUp()
-       self.files = {'dir': self.file,
-                     'file': tempfile.NamedTemporaryFile(dir=self.file.name, delete=False)}
-
 
 class OrderedTestLoader(unittest.TestLoader):
     def getTestCaseNames(self, testCaseClass):

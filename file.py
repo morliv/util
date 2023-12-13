@@ -5,34 +5,43 @@ from pathlib import Path
 from typing import List
 
 
-def temp_file(self, name, content, root=None):
+def temp_file(content, root=None):
     file = tempfile.NamedTemporaryFile(mode='w+t', dir=root, delete=False)
     file.write(content)
     file.flush()
     return file
  
+
 class Structure:
-    def __init__(self, structure={}, dir=None):
-        self.structure = structure
-        files = self._files()
+    def __init__(self, blueprint=[], dir=None):
+        self.blueprint = blueprint
+        self.dir = dir
+        self.files = self._files()
     
     def _files(self):
-        return [self._file(name, content) for name, content in \
-                self.structure.items()]
+        return [self._file(content) for content in self.blueprint]
 
-    def _file(self, name, content):
-        return Dir(name, content) \
-            if isinstance(content, dict) else \
-            temp_file(name, content)
+    def _file(self, content):
+        return Dir(self.dir, content) \
+            if isinstance(content, list) else \
+            File(content, self.dir)
 
     def clean(self):
         for f in self.files:
             f.clean() if isinstance(f, Dir) else f.close()
 
-class Dir():
-    def __init__(self, name=None, dir=None, structure={}):
-        self.f = tempfile.TemporaryDirectory(name=name, dir=dir)
-        self.structure = structure
+
+class File:
+    def __init__(self, create=temp_file, content='', dir=None):
+        self.f = create(content='', dir=dir)
+        self.p = Path(self.f.name)
+
+
+class Dir(File):
+    def __init__(self, create=tempfile.TemporaryDirectory, dir=dir,
+                 blueprint=[]):
+        super().__init__(create=create, dir=dir) 
+        self.structure = Structure(blueprint, dir)
     
 
 def remove_occurances(string, file_path):
@@ -91,6 +100,5 @@ def renew(path: Path, mkdirs=True, clean=False, match_as_prefix=False):
     return path
 
 
-    def local_data_dir(file_attr: str):
-        return renew(Path(file_attr).resolve().parent / "data", mkdirs=True)
-
+def local_data_dir(file_attr: str):
+    return renew(Path(file_attr).resolve().parent / "data", mkdirs=True)
