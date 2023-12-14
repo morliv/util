@@ -9,13 +9,6 @@ class TestCase(unittest.TestCase):
     def assertEqualAttributes(self, first: type, second: type, msg: Any = None, ignore=[]) -> None:
         self.assertTrue(obj.eq_attributes(first, second, ignore))
     
-    def truth(self, assertMethod: Callable, *args, **kwargs):
-        try:
-            assertMethod(*args, **kwargs)
-            return True
-        except:
-            return False
- 
 
 class OrderedTestLoader(unittest.TestLoader):
     def getTestCaseNames(self, testCaseClass):
