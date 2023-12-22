@@ -1,52 +1,72 @@
 from __future__ import annotations
+from abc import ABC, abstractmethod
 import shutil
 import difflib
 import tempfile
 from pathlib import Path
-from typing import List
+from typing import List, Union, TypeVar
 
 
 def temp_file(content, dir=None):
     file = tempfile.NamedTemporaryFile(mode='w+t', dir=dir, delete=False)
     file.write(content)
     file.flush()
+    file.seek(0)
     return file
  
 
+def path(f):
+    return Path(f.name)
+
+
 class File:
     def __init__(self, content=None, dir=None, create=temp_file):
-        self.f = create(content='', dir=dir) if content else create(dir=dir)
-        self.p = Path(self.f.name)
+        self.f = create(content, dir) if content else create(dir=dir)
+        self.p = path(self.f)
+    
+    def read(self):
+        self.f.seek(0)
+        content = self.f.read()
+        self.f.seek(0)
+        return content
+
+
+Representation = TypeVar('Representation', str, List)
+StructureRepresentation = List[Representation]
 
 
 class Structure:
-    def __init__(self, blueprint=[], dir=None):
+    """blueprint & representation expect the top-level
+    list then inner lists are directories & strings are files w/ their
+    contents
+    """
+    def __init__(self, blueprint: StructureRepresentation=[], dir=None):
         self.blueprint = blueprint
         self.dir = dir
         self.files = self._files()
     
-    def _files(self):
+    def _files(self) -> List[File]:
         return [self._file(content) for content in self.blueprint]
 
-    def _file(self, content):
-        return Dir(self.dir, content) \
-            if isinstance(content, list) else \
-            File(content, self.dir)
+    def _file(self, content: Representation) -> File:
+        return Dir(content, self.dir) if isinstance(content, list) \
+            else File(content, self.dir)
 
     def clean(self):
         for f in self.files:
-            f.clean() if isinstance(f, Dir) else f.f.close()
+            f.structure.clean() if isinstance(f, Dir) else f.f.close()
     
-    def representation(self):
-        return [self.representation(f.structure) if isinstance(f, Dir) else f.f.read() \
-        for f in self.files]
+    def representation(self) -> StructureRepresentation:
+        return [f.structure.representation() if isinstance(f, Dir) \
+                else f.f.read() for f in self.files]
         
 
 class Dir(File):
     def __init__(self, blueprint=[], dir=None,
                  create=tempfile.TemporaryDirectory):
-        super().__init__(create=create, dir=dir) 
-        self.structure = Structure.__init__(blueprint, dir)
+        self.f = create(dir=dir)
+        self.p = path(self.f)
+        self.structure = Structure(blueprint, dir)
    
 
 def remove_occurances(string, file_path):

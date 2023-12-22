@@ -8,7 +8,7 @@ from util.iterable import Comparative
 from util.test import TestCase
 
 
-@pytest.mark.parametrize(['blueprint',
+@pytest.mark.parametrize('blueprint', [
     ['1'],
     ['1', '2'],
     [[]],
@@ -20,5 +20,5 @@ from util.test import TestCase
 ])
 def test_structure(blueprint: list):
     s = Structure(blueprint)
-    assert file.blueprint(s.files) == blueprint
+    assert s.representation() == blueprint
     s.clean()
