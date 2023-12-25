@@ -1,6 +1,6 @@
 from __future__ import annotations
 import io
-import hashlib
+from hashlib import md5
 from pathlib import Path, PurePath
 from typing import Optional, List, Callable
 from dataclasses import dataclass, field
@@ -14,6 +14,7 @@ from googleapiclient.errors import HttpError
 
 from util import dictionary, function, process, obj, path
 from util.g import api, Service, Query
+from util.relation import Relation
 
 
 class File:
@@ -35,7 +36,8 @@ class File:
         vars = self.__dict__.items()
         if 'owners' in vars and isinstance(vars['owners'], dict):
            vars['owners'] = 'me' 
-        return {('fileId' if k == 'id' else k): v for k, v in vars if k in self.FIELDS and v and (id or not k == 'id')}
+        return {('fileId' if k == 'id' else k): v for k, v in vars \
+                if k in self.FIELDS and v and (id or not k == 'id')}
 
     def one(self):
         return self.first() or self.create()
@@ -47,7 +49,7 @@ class File:
 
     def matches(self) -> List[File]:
         return File.list(Query.from_components(self.body(id=False)))
-        
+
     LIST_FIELDS = f"files({','.join(FIELDS + ['owners'])}),nextPageToken"
 
     @staticmethod
@@ -55,7 +57,8 @@ class File:
         results = []
         pageToken = None
         while pageToken != 'end':
-            response = api.request(Service.files.list(q=query, pageSize=1000, fields=File.LIST_FIELDS, pageToken=pageToken))
+            response = api.request(Service.files.list(q=query, pageSize=1000,
+                fields=File.LIST_FIELDS, pageToken=pageToken))
             print(f'{pageToken = }\n{query = }\n{response = }\n')
             if not response:
                 breakpoint()
@@ -71,7 +74,7 @@ class File:
         return [f for f in files if f.name.startswith(pattern)]
 
     @staticmethod
-    def files(responses) -> List(File):
+    def files(responses) -> List[File]:
         return [File(**r) for r in responses]
 
     def delete(self) -> Optional[str]:
@@ -97,6 +100,23 @@ class File:
             chosen = getattr(f, action)()
             return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
         return []
+
+    def equivalent(self, local: Path) -> bool:
+        if not self.name == local.name: return False
+        if local.is_file():
+            return self._equivalent_content(local)
+        elif local.is_dir():
+            return self._equivalent_dir()
+        return False
+    
+    def _equivalent_dir(self, local) -> bool:
+        files = [File(p=id) for id in  self.parents]
+        return Relation(files, [local.iterdir()], File.equivalent).bijection()
+
+    def _equivalent_content(self, local) -> bool:
+        with open(local, 'rb') as l:
+            return md5(l.read()).hexdigest() \
+                == md5(self.file.content()).hexdigest()
 
     def delete_by_name(self, name: str):
         files = self.matches()
@@ -139,7 +159,3 @@ class Map():
             if f.equivalent(): equivalent.append()
             else: matching_metadata.append(f)
         return equivalent.extend(matching_metadata)
-
-    def equivalent(self) -> bool:
-        with open(self.local, 'rb') as local_file:
-            return hashlib.md5(local_file.read()).hexdigest() == hashlib.md5(self.file.content()).hexdigest()
