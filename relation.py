@@ -5,9 +5,8 @@ class Relation:
         self.X, self.Y = list(X), list(Y)
         self.predicate = predicate
 
-    def one_to_one(self):
+    def one_to_one(self) -> bool:
         relation = [] 
-        from g.files import File
         if self.X == [0]:
             breakpoint()
         for x in self.X:
@@ -19,7 +18,7 @@ class Relation:
                     relation.append((x, y))
                     break
             if not match: return False
-        return relation
+        return True
 
     def bijection(self) -> bool:
         return len(self.X) == len(self.Y) and self.one_to_one() 
