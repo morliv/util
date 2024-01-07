@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from util import dictionary
+import dictionary as d
 
 class Query(str):
     class Clause(str):
@@ -9,7 +9,7 @@ class Query(str):
 
         @staticmethod
         def from_parts(key, val, op=None):
-            op = op or dictionary.key_of_match_within_values(Query.Clause.OPS, key)
+            op = op or d.key_of_match_within_values(Query.Clause.OPS, key)
             return Query.Clause(f"'{val}' {op} {key}" if op in Query.Clause.VAL_FIRST_OPS else f"{key} {op} '{val}'")
 
         @staticmethod

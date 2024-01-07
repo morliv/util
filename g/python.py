@@ -7,7 +7,6 @@ from IPython import get_ipython, embed
 
 sys.path.append(str(Path.cwd().resolve()))
 
-from util.g import *
 
 ipython = get_ipython()
 

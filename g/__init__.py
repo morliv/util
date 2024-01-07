@@ -1,3 +1,3 @@
-from .api import Service
-from .query import Query
-from .files import File, Map
+from g.api import Service
+from g.query import Query
+from g.files import File, Map

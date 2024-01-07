@@ -2,7 +2,8 @@ import copy
 from typing import Optional, Callable
 from functools import partial
 
-from util import dictionary as d
+import dictionary as d
+
 
 def set(obj: type, response, anew=False) -> Optional[type]:
     if anew:

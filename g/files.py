@@ -12,9 +12,9 @@ import magic
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 from googleapiclient.errors import HttpError
 
-from util import dictionary, function, process, obj, path
-from util.g import api, Service, Query
-from util.relation import Relation
+import obj, path
+from g import api, Service, Query
+from relation import Relation
 
 
 class File:
@@ -28,6 +28,7 @@ class File:
         self.parents = parents or ['root']
         self.owners = owners
         self.media_body = media_body
+        if self.id: self.get()
 
     def get(self):
         return api.set(self, Service.files.get(fileId=self.id))
@@ -106,17 +107,17 @@ class File:
         if local.is_file():
             return self._equivalent_content(local)
         elif local.is_dir():
-            return self._equivalent_dir()
+            return self._equivalent_dir(local)
         return False
     
     def _equivalent_dir(self, local) -> bool:
-        files = [File(p=id) for id in  self.parents]
-        return Relation(files, [local.iterdir()], File.equivalent).bijection()
+        files = [File(id=id) for id in self.parents]
+        return Relation(files, list(local.iterdir()), File.equivalent).bijection()
 
     def _equivalent_content(self, local) -> bool:
         with open(local, 'rb') as l:
             return md5(l.read()).hexdigest() \
-                == md5(self.file.content()).hexdigest()
+                == md5(self.content()).hexdigest()
 
     def delete_by_name(self, name: str):
         files = self.matches()

@@ -8,7 +8,7 @@ from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
-from util import obj
+import obj
 
 # If modifying these scopes, delete token.json
 SCOPES = [
@@ -54,4 +54,3 @@ def handle_response(e: HttpError):
     if e.resp.status == 404:
         return None
     raise
-

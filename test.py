@@ -3,7 +3,6 @@ from pathlib import Path
 from typing import Any, Callable
 import unittest
 
-from util import obj, file
 
 class TestCase(unittest.TestCase):
     def assertEqualAttributes(self, first: type, second: type, msg: Any = None, ignore=[]) -> None:

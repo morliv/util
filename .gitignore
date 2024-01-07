@@ -7,3 +7,4 @@ util.egg-info
 logs.log
 .vscode/
 *.json
+.venv
