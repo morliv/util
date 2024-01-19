@@ -30,7 +30,8 @@ def _creds():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS, SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS,
+                                                             SCOPES)
             creds = flow.run_local_server(port=0)
         with open(TOKEN, "w") as token:
             token.write(creds.to_json())

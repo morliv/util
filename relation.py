@@ -7,8 +7,6 @@ class Relation:
 
     def one_to_one(self) -> bool:
         relation = [] 
-        if self.X == [0]:
-            breakpoint()
         for x in self.X:
             match = False
             for y in self.Y:

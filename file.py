@@ -100,7 +100,6 @@ def files_are_equivalent(file1_path: Path, file2_path: Path, print_diff=True):
     diff = difflib.ndiff(read_file(file1_path), read_file(file2_path))
 
     def analyze_line(line):
-        print(line)
         return line.startswith("  ")
 
     return all(analyze_line(line) for line in diff)

@@ -1,7 +1,7 @@
 import pytest
-print(pytest.__file__)
 
 from file import Structure
+from list import nestedly
 
 @pytest.fixture(params=[
     ['1'],
@@ -14,7 +14,7 @@ from file import Structure
     [[], '1']
 ])
 def blueprint(request):
-    return request.param
+    return nestedly(request.param, lambda s: "Content " + s)
 
 @pytest.fixture
 def structure(blueprint):

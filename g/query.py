@@ -32,4 +32,3 @@ class Query(str):
             q = Query.concat(clauses, 'or')
             return Query(f"({q})") if len(clauses) > 1 else q
         return Query(Query.Clause.from_parts(k, v))
-

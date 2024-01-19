@@ -5,6 +5,8 @@ import os
 from pathlib import Path, PurePath
 from IPython import get_ipython, embed
 
+from g import *
+
 sys.path.append(str(Path.cwd().resolve()))
 
 
@@ -15,4 +17,3 @@ if ipython:
     ipython.magic('autoreload 2')
 
 embed()
-

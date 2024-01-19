@@ -3,9 +3,12 @@ from pathlib import Path
 from typing import Any, Callable
 import unittest
 
+import obj
+
 
 class TestCase(unittest.TestCase):
-    def assertEqualAttributes(self, first: type, second: type, msg: Any = None, ignore=[]) -> None:
+    def assertEqualAttributes(self, first: type, second: type, msg: Any = None,
+                              ignore=[]) -> None:
         self.assertTrue(obj.eq_attributes(first, second, ignore))
     
 

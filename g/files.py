@@ -21,7 +21,10 @@ class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
     FIELDS = ['name', 'mimeType', 'id', 'parents']
 
-    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None, id: Optional[str]=None, parents: List[str]=[], owners: List[str]=['me'], media_body: Optional[MediaFileUpload]=None):
+    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None,
+                 id: Optional[str]=None, parents: List[str]=[],
+                 owners: List[str]=['me'],
+                 media_body: Optional[MediaFileUpload]=None):
         self.name = name
         self.mimeType = mimeType
         self.id = id
@@ -60,13 +63,10 @@ class File:
         while pageToken != 'end':
             response = api.request(Service.files.list(q=query, pageSize=1000,
                 fields=File.LIST_FIELDS, pageToken=pageToken))
-            print(f'{pageToken = }\n{query = }\n{response = }\n')
-            if not response:
-                breakpoint()
             new_files = response.get('files', [])
             results += new_files
             pageToken = response.get('nextPageToken', 'end')
-        return File.files(results)
+        return File.__files(results)
 
     def prefixed(self, pattern: str):
         query_dict = self.body()
@@ -75,14 +75,15 @@ class File:
         return [f for f in files if f.name.startswith(pattern)]
 
     @staticmethod
-    def files(responses) -> List[File]:
+    def __files(responses) -> List[File]:
         return [File(**r) for r in responses]
 
     def delete(self) -> Optional[str]:
         return self.id and api.request(Service.files.delete(fileId=self.id))
 
     def create(self) -> File:
-        return api.set(self, Service.files.create(body=self.body(), media_body=self.media_body))
+        return api.set(self, Service.files.create(body=self.body(),
+                                                  media_body=self.media_body))
 
     def content(self) -> bytes:
         request = self.id and Service.files.get_media(fileId=self.id)
@@ -94,10 +95,10 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def folders(p: PurePath, action: str='list') -> List[str]:
-        if path.top_level(p): return ['root']
-        if parents := File.folders(p.parent):
-            f = File(name=p.name, parents=parents)
+    def files(drive_path: PurePath, action: str='list') -> List[str]:
+        if path.top_level(drive_path): return ['root']
+        if parents := File.files(drive_path.parent):
+            f = File(name=drive_path.name, parents=parents)
             chosen = getattr(f, action)()
             return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
         return []
@@ -111,18 +112,18 @@ class File:
         return False
     
     def _equivalent_dir(self, local) -> bool:
-        files = [File(id=id) for id in self.parents]
-        return Relation(files, list(local.iterdir()), File.equivalent).bijection()
+        X = File.list(Query.from_components({"parents": [self.id]}))
+        Y = list(local.iterdir())
+        return Relation(X , Y , File.equivalent).bijection()
 
     def _equivalent_content(self, local) -> bool:
         with open(local, 'rb') as l:
             return md5(l.read()).hexdigest() \
                 == md5(self.content()).hexdigest()
 
-    def delete_by_name(self, name: str):
-        files = self.matches()
-        for f in files:
-            if f.name == name:
+    def delete_by_prefix(self, prefix: str):
+        for f in self.matches():
+            if f.name.startswith(prefix):
                 f.delete()
 
     @staticmethod
@@ -133,9 +134,11 @@ class File:
 
     @staticmethod
     def print_permissions(folder_id):
-        permissions = File.service.permissions().list(fileId=folder_id).execute()
+        permissions = File.service.permissions().list(fileId=folder_id) \
+            .execute()
         for permission in permissions.get('permissions', []):
-            print(f"ID: {permission['id']}, Type: {permission['type']}, Role: {permission['role']}")
+            print(f"ID: {permission['id']}, Type: {permission['type']}, \
+                  Role: {permission['role']}")
 
 
 class Map():
@@ -145,7 +148,7 @@ class Map():
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else File.FOLDER_MIMETYPE
         media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
         self.file = File(self.local.name, mimeType, media_body=media)
-        self.file.parents = File.folders(drive, action)
+        self.file.parents = File.files(drive, action)
         self.sync(action)
 
     def sync(self, action='one'):
