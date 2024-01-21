@@ -43,7 +43,7 @@ class File:
         return {('fileId' if k == 'id' else k): v for k, v in vars \
                 if k in self.FIELDS and v and (id or not k == 'id')}
 
-    def one(self):
+    def one(self) -> File:
         return self.first() or self.create()
 
     def first(self) -> Optional[File]:
@@ -63,6 +63,7 @@ class File:
         while pageToken != 'end':
             response = api.request(Service.files.list(q=query, pageSize=1000,
                 fields=File.LIST_FIELDS, pageToken=pageToken))
+            breakpoint()
             new_files = response.get('files', [])
             results += new_files
             pageToken = response.get('nextPageToken', 'end')
@@ -95,8 +96,9 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def files(drive_path: PurePath, action: str='list') -> List[str]:
-        if path.top_level(drive_path): return ['root']
+    def files(drive_path: PurePath, action: str='list') -> List[File]:
+        breakpoint()
+        if path.top_level(drive_path): return [File(id='root')]
         if parents := File.files(drive_path.parent):
             f = File(name=drive_path.name, parents=parents)
             chosen = getattr(f, action)()
@@ -148,14 +150,15 @@ class Map():
         mimeType = magic.from_file(str(local), mime=True) if self.local.is_file() else File.FOLDER_MIMETYPE
         media = MediaFileUpload(str(self.local), mimetype=mimeType) if self.local.is_file() else None
         self.file = File(self.local.name, mimeType, media_body=media)
-        self.file.parents = File.files(drive, action)
+        self.file.parents = [f.id for f in File.files(drive, action)]
         self.sync(action)
 
     def sync(self, action='one'):
+        breakpoint()
         getattr(self.file, action)()
         if self.local.is_dir():
            for p in self.local.iterdir():
-               Map(local=p, drive=self.drive / p.name)
+               Map(local=p, drive=self.drive / p.name, action=action)
 
     def list(self) -> List[File]:
         equivalent, matching_metadata = [], []
