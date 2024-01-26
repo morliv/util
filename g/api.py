@@ -22,6 +22,7 @@ TOKEN = DIR / "token.json"
 def _service(service_name, version):
     return build(service_name, "v" + str(version), credentials=_creds())
 
+
 def _creds():
     creds = None
     if TOKEN.exists():
