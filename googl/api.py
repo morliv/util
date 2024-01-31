@@ -1,8 +1,6 @@
 from pathlib import Path
 from typing import Callable, Optional
 
-import google.auth
-from google.auth.transport.requests import Request
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
 from google.oauth2.credentials import Credentials
@@ -31,8 +29,7 @@ def _creds():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS,
-                                                             SCOPES)
+            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS, SCOPES)
             creds = flow.run_local_server(port=0)
         with open(TOKEN, "w") as token:
             token.write(creds.to_json())
@@ -41,6 +38,7 @@ def _creds():
 
 class Service:
     drive = _service('drive', 3)
+    sheets = _service('sheets', 4)
     files = drive.files()
 
 def set(the_obj, f: Callable) -> type:

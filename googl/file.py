@@ -8,7 +8,7 @@ from dataclasses import dataclass, field
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import obj, path
-from g import api, Service, Query
+from googl import api, Service, Query
 from relation import Relation
 
 
@@ -38,7 +38,7 @@ class File:
     def body(self, id=True) -> dict:
         vars = self.__dict__.items()
         if 'owners' in vars and isinstance(vars['owners'], dict):
-           vars['owners'] = 'me' 
+           vars['owners'] = 'me'
         return {('fileId' if k == 'id' else k): v for k, v in vars \
                 if k in self.FIELDS and v and (id or not k == 'id')}
 
@@ -67,7 +67,7 @@ class File:
         return self.first() or self.create()
 
     def first(self) -> Optional[File]:
-        files = self.matches() 
+        files = self.matches()
         for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
 
@@ -105,7 +105,7 @@ class File:
         elif local.is_dir():
             return self._equivalent_dir(local)
         return False
-    
+ 
     def _equivalent_dir(self, local) -> bool:
         X = File.list(Query.from_components({"parents": [self.id]}))
         Y = list(local.iterdir())

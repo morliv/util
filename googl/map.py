@@ -4,7 +4,7 @@ import magic
 
 from googleapiclient.http import MediaFileUpload
 
-from g import File
+from googl import File
 
 
 class Map():
@@ -13,7 +13,6 @@ class Map():
         self.drive = Path(drive)
         mimeType = magic.from_file(str(local), mime=True) \
             if self.local.is_file() else File.FOLDER_MIMETYPE
-        
         parents = []
         for f in File.files(drive, action):
             parents.append(f.id)

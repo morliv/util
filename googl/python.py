@@ -5,7 +5,7 @@ import os
 from pathlib import Path, PurePath
 from IPython import get_ipython, embed
 
-from g import *
+from googl import *
 
 sys.path.append(str(Path.cwd().resolve()))
 
