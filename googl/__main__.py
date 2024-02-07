@@ -14,13 +14,8 @@ def parsed_args():
 
 
 def main(args):
-    run(args.list_files, Path(args.local_source_path), Path(args.drive_path))
-
-
-def run(list_files, local_source_path, drive_path):
-    if list_files:
-        File.files(drive_path)
-    Map(local_source_path.expanduser(), drive_path)
+    if args.list_files: File.files(args.drive_path)
+    Map(Path(args.local_source_path), Path(args.drive_path))
 
 
 if __name__ == '__main__':

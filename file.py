@@ -1,10 +1,10 @@
 from __future__ import annotations
-from abc import ABC, abstractmethod
 import shutil
 import difflib
 import tempfile
+import magic
 from pathlib import Path
-from typing import List, Union, TypeVar
+from typing import List, TypeVar
 
 
 def temp_file(content, dir=None):
@@ -20,15 +20,23 @@ def path(f):
 
 
 class File:
-    def __init__(self, content=None, dir=None, create=temp_file):
-        self.f = create(content, dir) if content else create(dir=dir)
-        self.p = path(self.f)
+    def __init__(self, p: None=Path, content=None, dir=None,
+                 create=temp_file):
+        if p:
+            self.p = p
+        else:
+            self.f = create(content, dir) if content else create(dir=dir)
+            self.p = path(self.f)
     
     def read(self):
         self.f.seek(0)
         content = self.f.read()
         self.f.seek(0)
         return content
+
+    def mimetype(self, folder_mimetype=None):
+        return magic.from_file(str(self.local), mime=True) \
+                    if self.p.is_file() else folder_mimetype
 
 
 Representation = TypeVar('Representation', str, List)
@@ -50,7 +58,7 @@ class Structure:
 
     def _file(self, content: Representation) -> File:
         return Dir(content, self.dir) if isinstance(content, list) \
-            else File(content, self.dir)
+            else File(content=content, dir=self.dir)
 
     def clean(self):
         for f in self.files:

@@ -1,25 +1,14 @@
 from pathlib import Path
 from typing import List
-import magic
 
-from googleapiclient.http import MediaFileUpload
-
+import file
 from googl import File
 
 
 class Map():
     def __init__(self, local: Path, drive: Path=Path('/'), action='one'):
-        self.local = Path(local)
-        self.drive = Path(drive)
-        mimeType = magic.from_file(str(local), mime=True) \
-            if self.local.is_file() else File.FOLDER_MIMETYPE
-        parents = []
-        for f in File.files(drive, action):
-            parents.append(f.id)
-        media = MediaFileUpload(str(self.local), mimetype=mimeType) \
-            if self.local.is_file() else None
-        self.file = File(self.local.name, mimeType, parents=parents,
-                         media_body=media)
+        self.local, self.drive  = Path(local), Path(drive)
+        self.file = File.local(local, drive, action)
         self.sync(action)
 
     def sync(self, action='one'):
@@ -34,3 +23,18 @@ class Map():
             if f.equivalent(): equivalent.append()
             else: matching_metadata.append(f)
         return equivalent.extend(matching_metadata)
+
+    def local(local: Path, drive: Path, action='list') -> File:
+        local, drive = Path(local), Path(drive)
+        mimeType = file.File(local).mimetype(File.FOLDER_MIMETYPE)
+        parents = [File.folder()]
+        media = MediaFileUpload(str(local), mimetype=mimeType) \
+            if local.is_file() else None
+        return File(local.name, mimeType, parents=parents, media_body=media)
+    
+    def consistent(local: Path, drive: Path) -> bool:
+        return Relation([local], File.file(local, drive).matches(), \
+                        partial(File.equivalent, drive=drive)).one_to_one()
+
+    def file(local: Path, drive_parent: Path) -> File:
+        return File(local.name, parents=[File.folder(drive_parent).id])

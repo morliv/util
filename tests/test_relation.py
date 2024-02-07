@@ -4,8 +4,6 @@ import itertools
 
 from relation import Relation
 
-def char_ord_match(c, o):
-    return chr(c) == o
 
 class TestSets(TestCase):
     def test_sets(self):
@@ -15,7 +13,7 @@ class TestSets(TestCase):
                                  [{'\x00'}, {'\x01'}, {'\x00', '\x01'}])
         sets = list(map(Params._make, list(sets)))
         actuals = [s.function_type(Relation(
-            s.domain, s.range, char_ord_match)) for s in sets]
+            s.domain, s.range, chr)) for s in sets]
         results = [True, False, True,
                    False, True, True,
                    False, False, True,

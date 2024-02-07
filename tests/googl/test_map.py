@@ -3,7 +3,6 @@ from googl.file import File
 from googl.map import Map
 
 
-def test_map(structure):
-    local_paths = [f.p for f in structure.files]
-    files = [Map(p).file for p in local_paths]
-    assert Relation(files, local_paths, File.equivalent).bijection()
+def assert_mapped(paths, map=lambda p: Map(p).file):
+    files = [map(p) for p in paths]
+    assert Relation(files, paths, File.equivalent).bijection()

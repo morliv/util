@@ -3,6 +3,7 @@ import pytest
 from file import Structure
 from list import nestedly
 
+
 @pytest.fixture(params=[
     ['1'],
     ['1', '2'],
@@ -21,3 +22,7 @@ def structure(blueprint):
     s = Structure(blueprint)
     yield s
     s.clean()
+
+@pytest.fixture
+def paths(structure):
+    yield [f.p for f in structure.files]
