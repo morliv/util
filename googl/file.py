@@ -10,7 +10,6 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 import obj
 import path
 from googl import api, Service, Query
-from relation import Relation
 
 
 class File:
