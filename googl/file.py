@@ -3,7 +3,7 @@ import io
 from hashlib import md5
 from functools import partial
 from pathlib import Path, PurePath
-from typing import Optional, List
+from typing import Callable, Optional, List
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -41,7 +41,7 @@ class File:
             raise Exception(f'{folders} should be singular & a folder')
         return folders[0]
 
-    def equivalent(local: Path) -> bool:
+    def equivalent(self, local: Path) -> bool:
         if not local.name == self.name: return False
         return File._equivalent_content(local, )
 
@@ -53,12 +53,16 @@ class File:
     def create(self) -> File:
         return api.set(self, Service.files.create(body=self.body(),
                                                   media_body=self.media_body))
+
     def body(self, id=True) -> dict:
         vars = self.__dict__.items()
         if 'owners' in vars and isinstance(vars['owners'], dict):
            vars['owners'] = 'me'
         return {('fileId' if k == 'id' else k): v for k, v in vars \
                 if k in self.FIELDS and v and (id or not k == 'id')}
+
+    Action = Callable[[], File] | Callable[[], List[File]] \
+        | Callable[[], Optional[File]] 
 
     @staticmethod
     def files(drive: PurePath, action: str='list') -> List[File]:

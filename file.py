@@ -4,7 +4,7 @@ import difflib
 import tempfile
 import magic
 from pathlib import Path
-from typing import List, TypeVar
+from typing import Callable, Any, List, TypeVar
 
 
 def temp_file(content, dir=None):
@@ -19,24 +19,29 @@ def path(f):
     return Path(f.name)
 
 
+def on_subpaths(local: Path, f: Callable[[Path], Any]):
+        if local.is_dir():
+            for p in local.iterdir():
+                f(p)
+
+
 class File:
     def __init__(self, p: None=Path, content=None, dir=None,
-                 create=temp_file):
+                 create=temp_file, folder_mimetype=None):
         if p:
             self.p = p
         else:
             self.f = create(content, dir) if content else create(dir=dir)
             self.p = path(self.f)
+        self.mimetype = magic.from_file(str(p), mime=True) \
+            if p.is_file() else folder_mimetype
+
     
     def read(self):
         self.f.seek(0)
         content = self.f.read()
         self.f.seek(0)
         return content
-
-    def mimetype(self, folder_mimetype=None):
-        return magic.from_file(str(self.local), mime=True) \
-                    if self.p.is_file() else folder_mimetype
 
 
 Representation = TypeVar('Representation', str, List)
