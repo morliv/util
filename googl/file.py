@@ -3,7 +3,7 @@ import io
 from hashlib import md5
 from functools import partial
 from pathlib import Path, PurePath
-from typing import Callable, Optional, List
+from typing import Self, Callable, Optional, List
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -61,11 +61,11 @@ class File:
         return {('fileId' if k == 'id' else k): v for k, v in vars \
                 if k in self.FIELDS and v and (id or not k == 'id')}
 
-    Action = Callable[[], File] | Callable[[], List[File]] \
-        | Callable[[], Optional[File]] 
+    Action = Callable[[], Self] | Callable[[], List[Self]] \
+        | Callable[[], Optional[Self]]
 
     @staticmethod
-    def files(drive: PurePath, action: str='list') -> List[File]:
+    def files(drive: PurePath, action: Action=Self.list) -> List[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := File.files(drive.parent):
             parent_ids = [f.id for f in parents]

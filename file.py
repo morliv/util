@@ -20,9 +20,9 @@ def path(f):
 
 
 def on_subpaths(local: Path, f: Callable[[Path], Any]):
-        if local.is_dir():
-            for p in local.iterdir():
-                f(p)
+    if local.is_dir():
+        for p in local.iterdir():
+            f(p)
 
 
 class File:

@@ -9,33 +9,29 @@ from googl import File
 
 
 class Map:
-    def __init__(self, local: Path, drive: Path=Path('/')):
-        self.local = Path(local)
-        self.file = self.file(local, Path(drive))
+    def __init__(self, local: Path, destination: Path=Path('/')):
+        self.local = file.File(local, folder_mimetype=File.FOLDER_MIMETYPE)
+        self.destination = destination
+        self.drive = self.file()
 
-    def file(local: Path, drive: Path) -> File:
-        local_file = file.File(local, folder_mimetype=File.FOLDER_MIMETYPE)
-        parents = [File.folder(drive).id]
-        media = MediaFileUpload(str(local), mimetype=local_file.mimeType) \
-            if local.is_file() else None
-        return File(local.name, local_file.mimeType, parents=parents,
-            media_body=media)
+    def file(self) -> File:
+        return File(self.local.p.name, self.local.mimeType,
+                    parents=[File.folder(self.destination).id],
+                    media_body=self.media())
+ 
+    def media(self) -> MediaFileUpload:
+        return MediaFileUpload(
+            str(self.local.p), mimetype=self.local.mimetype) \
+            if self.local.p.is_file() else None
 
     def sync(self, action: File.Action=File.one):
         action()
         file.on_subpaths(
-            lambda p: Map(local=p, drive=self.drive / p.name).sync(action)) 
-
-    def list(self) -> List[File]:
-        equivalent, matching_metadata = [], []
-        for f in self.file.list():
-            if f.equivalent(): equivalent.append()
-            else: matching_metadata.append(f)
-        return equivalent.extend(matching_metadata)
+            lambda p: Map(local=p, destination=self.destination / p.name) \
+                .sync(action))
 
     def consistent(self) -> bool:
-        return Relation([self.local], File.file(self.local, self.drive).matches(), \
-                        partial(File.equivalent, drive=self.drive)).one_to_one()
-
-    def file(self) -> File:
-        return File(self.local.name, parents=[File.folder(self.drive).id])
+        return Relation([self.local],
+                        Map(self.local.p, self.drive).file.matches(), 
+                        lambda local: self.file(local, self.destination)) \
+            .one_to_one()
