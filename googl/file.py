@@ -65,7 +65,7 @@ class File:
         | Callable[[], Optional[Self]]
 
     @staticmethod
-    def files(drive: PurePath, action: Action=Self.list) -> List[File]:
+    def files(drive: PurePath=PurePath('/'), action: Action=Self.list) -> List[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := File.files(drive.parent):
             parent_ids = [f.id for f in parents]
