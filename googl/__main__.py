@@ -15,7 +15,7 @@ def parsed_args():
 
 def main(args):
     if args.list_files: File.files(args.drive_path)
-    Map(Path(args.local_source_path), Path(args.drive_path))
+    Map(Path(args.local_source_path), Path(args.drive_path)).sync()
 
 
 if __name__ == '__main__':
