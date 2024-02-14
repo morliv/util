@@ -7,18 +7,22 @@ from googl.file import File
 from googl.map import Map
 
 @pytest.fixture
-def test_map(paths, tear_down_mapped):
-    for p in paths:
-        m = Map(p)
-        m.sync()
-    yield m
+def map(path):
+    m = Map(path)
+    m.sync()
+    yield m.drive
+    m.file.delete()
 
-def consistent(paths, map_func: Callable) -> bool:
+import subprocess
+from pathlib import Path
+def upload(path, monkeypatch):
+    monkeypatch.setattr('sys.argv', ['-l', path]).file
+    script_path = Path.home() / 'util/googl/__main__.py'
+    subprocess.run(['python', '-m', 'googl', '-l', path])
+
+@pytest.mark.parametrize('file_converter', [map, ])
+def consistent(paths, file_converter: Callable=map) -> bool:
     return Relation(paths,
-                    File.files(), 
-                    lambda local: Map(local).drive) \
+                    File.files(),
+                    lambda p: Map(p).file()) \
         .one_to_one()
-
-def assert_mapped(paths, map=lambda p: Map(p).file):
-    files = [map(p) for p in paths]
-    assert Relation(files, paths, File.equivalent).bijection()
