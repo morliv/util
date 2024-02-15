@@ -24,5 +24,5 @@ def structure(blueprint):
     s.clean()
 
 @pytest.fixture
-def paths(structure):
+def structure_paths(structure):
     yield [f.p for f in structure.files]
