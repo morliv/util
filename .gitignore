@@ -1,10 +1,7 @@
-.idea
+.*
 *__pycache__*
 token.txt
-.*.sw?
 credentials.json
 util.egg-info
 logs.log
-.vscode/
 *.json
-.venv
