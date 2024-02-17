@@ -20,8 +20,8 @@ class Map:
                     media_body=self.__media())
  
     def sync(self, action: str='matches'):
-        getattr(self, action)
-        file.on_subpaths(
+        getattr(self.drive, action)()
+        self.local.on_subpaths(
             lambda p: Map(local=p, destination=self.destination / p.name) \
                 .sync(action))
 

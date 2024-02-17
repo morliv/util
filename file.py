@@ -19,12 +19,6 @@ def path(f):
     return Path(f.name)
 
 
-def on_subpaths(local: Path, f: Callable[[Path], Any]):
-    if local.is_dir():
-        for p in local.iterdir():
-            f(p)
-
-
 class File:
     def __init__(self, p: Path=None, content=None, dir=None,
                  create=temp_file, folder_mimetype=None):
@@ -42,6 +36,11 @@ class File:
         content = self.f.read()
         self.f.seek(0)
         return content
+
+    def on_subpaths(self, f: Callable[[Path], Any]):
+        if self.p.is_dir():
+            for p in self.p.iterdir():
+                f(p)
 
 
 Representation = TypeVar('Representation', str, List)
