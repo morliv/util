@@ -1,5 +1,6 @@
+from __future__ import annotations
 from pathlib import Path
-from typing import Callable, Optional
+from typing import Callable, List
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -8,6 +9,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
 import obj
+from googl import Query, File
 
 # If modifying these scopes, delete token.json
 SCOPES = [
@@ -18,7 +20,7 @@ DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
 TOKEN = DIR / "token.json"
 
-def _service(service_name, version):
+def service(service_name, version):
     return build(service_name, "v" + str(version), credentials=_creds())
 
 
@@ -37,13 +39,15 @@ def _creds():
     return creds
 
 
-class Service:
-    drive = _service('drive', 3)
-    sheets = _service('sheets', 4)
-    files = drive.files()
-
 def set(the_obj, f: Callable) -> type:
     return obj.set(the_obj, request(f))
+
+
+def handle_response(e: HttpError):
+    if e.resp.status == 404:
+        return None
+    raise
+
 
 def request(f: Callable) -> dict:
     try:
@@ -51,7 +55,5 @@ def request(f: Callable) -> dict:
     except HttpError as e:
         handle_response(e)
 
-def handle_response(e: HttpError):
-    if e.resp.status == 404:
-        return None
-    raise
+class Service:
+    sheets = service('sheets', 4)

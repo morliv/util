@@ -27,7 +27,7 @@ def test_drive_map(paths):
     consistent(paths)
     for m in maps: m.drive.delete()
 
-def test_upload(paths):
+def test_command_line(paths):
     maps = []
     for p in paths:
         sys.argv = ['', '-l', p]

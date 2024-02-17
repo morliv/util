@@ -10,12 +10,12 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import obj
 import path
-from googl import api, Service, Query
+from googl import api, Service, Drive, Query
 
 
 class File:
     FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
-    FIELDS = ['name', 'mimeType', 'id', 'parents']
+    FIELDS = {'name', 'mimeType', 'id', 'parents'}
 
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None,
                  id: Optional[str]=None, parents: List[str]=None,
@@ -55,15 +55,16 @@ class File:
         return api.set(self, Service.files.create(body=self.body(),
                                                   media_body=self.media_body))
 
-    def body(self, id=True) -> dict:
-        vars = self.__dict__.items()
-        if 'owners' in vars and isinstance(vars['owners'], dict):
-           vars['owners'] = 'me'
-        return {('fileId' if k == 'id' else k): v for k, v in vars \
-                if k in self.FIELDS and v and (id or not k == 'id')}
+    def body(self, skip: set=set()) -> dict:
+        body = self.__dict__.items()
+        if 'owners' in body and isinstance(body['owners'], dict):
+           body['owners'] = 'me'
+        return {('fileId' if k == 'id' else k): v for k, v in body \
+                if k in self.FIELDS - skip and v}
 
     @staticmethod
-    def files(drive: PurePath=PurePath('/'), action: str='matches') -> List[File]:
+    def files(drive: PurePath=PurePath('/'), action: str='matches') -> \
+            List[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := File.files(drive.parent):
             parent_ids = [f.id for f in parents]
@@ -72,17 +73,12 @@ class File:
             return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
         return []
 
-    @staticmethod
-    def list(query) -> List[File]:
-        results = []
-        pageToken = None
-        while pageToken != 'end':
-            response = api.request(Service.files.list(q=query, pageSize=1000,
-                fields=File.LIST_FIELDS, pageToken=pageToken))
-            new_files = response.get('files', [])
-            results += new_files
-            pageToken = response.get('nextPageToken', 'end')
-        return File.__files(results)
+    def matches(self, prefix: str=None) -> List[File]:
+        skip = {'id'}
+        if prefix: skip |= 'name'
+        files = Query.from_components(self.body(skip), pattern=prefix).list()
+        return list(filter(lambda f: f.name.startswith(prefix), files)) \
+            if prefix else files
 
     def one(self) -> File:
         return self.first() or self.create()
@@ -91,11 +87,6 @@ class File:
         files = self.matches()
         for f in files[1:]: f.delete()
         return obj.set(self, next(iter(files), None))
-
-    def matches(self) -> List[File]:
-        return File.list(Query.from_components(self.body(id=False)))
-
-    LIST_FIELDS = f"files({','.join(FIELDS + ['owners'])}),nextPageToken"
 
     def delete(self) -> Optional[str]:
         return self.id and api.request(Service.files.delete(fileId=self.id))
@@ -108,12 +99,6 @@ class File:
         while not done:
             status, done = downloader.next_chunk()
         return fh.getvalue()
-
-    def prefixed(self, pattern: str) -> List[File]:
-        query_dict = self.body()
-        if 'name' in query_dict: query_dict.pop('name')
-        files = File.list(Query.from_components(query_dict, pattern=pattern))
-        return list(filter(lambda f: f.name.startswith(pattern), files))
 
     def delete_by_prefix(self, prefix: str):
         for f in self.matches():
