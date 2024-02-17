@@ -26,15 +26,15 @@ def on_subpaths(local: Path, f: Callable[[Path], Any]):
 
 
 class File:
-    def __init__(self, p: None=Path, content=None, dir=None,
+    def __init__(self, p: Path=None, content=None, dir=None,
                  create=temp_file, folder_mimetype=None):
         if p:
             self.p = p
         else:
             self.f = create(content, dir) if content else create(dir=dir)
             self.p = path(self.f)
-        self.mimetype = magic.from_file(str(p), mime=True) \
-            if p.is_file() else folder_mimetype
+        self.mimetype = magic.from_file(str(self.p), mime=True) \
+            if self.p.is_file() else folder_mimetype
 
     
     def read(self):

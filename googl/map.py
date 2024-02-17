@@ -15,12 +15,12 @@ class Map:
         self.drive = self.file()
 
     def file(self) -> File:
-        return File(self.local.p.name, self.local.mimeType,
+        return File(self.local.p.name, self.local.mimetype,
                     parents=[File.folder(self.destination).id],
                     media_body=self.__media())
  
-    def sync(self, action: File.Action=File.one):
-        action()
+    def sync(self, action: str='matches'):
+        getattr(self, action)
         file.on_subpaths(
             lambda p: Map(local=p, destination=self.destination / p.name) \
                 .sync(action))

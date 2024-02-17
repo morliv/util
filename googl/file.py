@@ -3,7 +3,8 @@ import io
 from hashlib import md5
 from functools import partial
 from pathlib import Path, PurePath
-from typing import Self, Callable, Optional, List
+from enum import Enum
+from typing import Callable, Optional, List
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -37,7 +38,7 @@ class File:
     @staticmethod
     def folder(drive: Path) -> File:
         folders = File.files(drive)
-        if len(folders) != 1 or folders[0] != File.FOLDER_MIMETYPE:
+        if len(folders) != 1 or folders[0].mimeType != File.FOLDER_MIMETYPE:
             raise Exception(f'{folders} should be singular & a folder')
         return folders[0]
 
@@ -61,11 +62,8 @@ class File:
         return {('fileId' if k == 'id' else k): v for k, v in vars \
                 if k in self.FIELDS and v and (id or not k == 'id')}
 
-    Action = Callable[[], Self] | Callable[[], List[Self]] \
-        | Callable[[], Optional[Self]]
-
     @staticmethod
-    def files(drive: PurePath=PurePath('/'), action: Action=Self.list) -> List[File]:
+    def files(drive: PurePath=PurePath('/'), action: str='matches') -> List[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := File.files(drive.parent):
             parent_ids = [f.id for f in parents]
