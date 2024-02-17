@@ -109,11 +109,11 @@ class File:
             status, done = downloader.next_chunk()
         return fh.getvalue()
 
-    def prefixed(self, pattern: str):
+    def prefixed(self, pattern: str) -> List[File]:
         query_dict = self.body()
         if 'name' in query_dict: query_dict.pop('name')
         files = File.list(Query.from_components(query_dict, pattern=pattern))
-        return [f for f in files if f.name.startswith(pattern)]
+        return list(filter(lambda f: f.name.startswith(pattern), files))
 
     def delete_by_prefix(self, prefix: str):
         for f in self.matches():
