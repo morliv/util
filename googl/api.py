@@ -9,7 +9,7 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
 import obj
-from googl import Query, File
+
 
 # If modifying these scopes, delete token.json
 SCOPES = [
@@ -55,5 +55,8 @@ def request(f: Callable) -> dict:
     except HttpError as e:
         handle_response(e)
 
+
 class Service:
     sheets = service('sheets', 4)
+    drive = service('drive', 3)
+    files = drive.files()

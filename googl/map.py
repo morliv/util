@@ -5,7 +5,7 @@ from googleapiclient.http import MediaFileUpload
 
 import file
 from relation import Relation
-from googl import File
+from googl import Files, File
 
 
 class Map:
@@ -16,7 +16,7 @@ class Map:
 
     def file(self) -> File:
         return File(self.local.p.name, self.local.mimetype,
-                    parents=[File.folder(self.destination).id],
+                    parents=[Files.folder(self.destination).id],
                     media_body=self.__media())
  
     def sync(self, action: str='one'):

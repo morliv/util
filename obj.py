@@ -1,6 +1,5 @@
 import copy
 from typing import Optional, Callable
-from functools import partial
 
 import dictionary as d
 

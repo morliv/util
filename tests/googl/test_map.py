@@ -1,12 +1,9 @@
 import sys
-import pytest
-from typing import Callable
-from pathlib import Path
 
 from relation import Relation
 from googl import results
-from googl.file import File
-from googl.map import Map
+from googl import File
+from googl import Map
 
 
 def consistent(paths) -> bool:
@@ -26,6 +23,7 @@ def test_drive_map(paths):
         maps.append(m)
     consistent(paths)
     for m in maps: m.drive.delete()
+
 
 def test_command_line(paths):
     maps = []

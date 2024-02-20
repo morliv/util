@@ -4,6 +4,7 @@ import arg
 from googl.api import Service
 from googl.query import Query
 from googl.file import File
+from googl.files import Files
 from googl.map import Map
 
 

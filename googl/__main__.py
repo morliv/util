@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-from . import results
+from googl import results
 
 
 results()
