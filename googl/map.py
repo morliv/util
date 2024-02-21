@@ -12,18 +12,18 @@ class Map:
     def __init__(self, local: Path, destination: Path=Path('/')):
         self.local = file.File(local, folder_mimetype=File.FOLDER_MIMETYPE)
         self.destination = destination
-        self.drive = self.file()
+        self.drive = self._drive()
 
-    def file(self) -> File:
-        return File(self.local.p.name, self.local.mimetype,
-                    parents=[Files.folder(self.destination).id],
-                    media_body=self.__media())
- 
     def sync(self, action: str='one'):
-        getattr(self.drive, action)()
+        getattr(Files(self.drive), action)()
         self.local.on_subpaths(
             lambda p: Map(local=p, destination=self.destination / p.name) \
                 .sync(action))
+
+    def _drive(self) -> File:
+        return File(self.local.p.name, self.local.mimetype,
+                    parents=[Files.folder(self.destination).id],
+                    media_body=self.__media())
 
     def __media(self) -> MediaFileUpload:
         return MediaFileUpload(
