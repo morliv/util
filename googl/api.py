@@ -9,6 +9,8 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
 import obj
+from dictionary import gets
+from . import Query
 
 
 # If modifying these scopes, delete token.json
@@ -39,10 +41,6 @@ def _creds():
     return creds
 
 
-def set(the_obj, f: Callable) -> type:
-    return obj.set(the_obj, request(f))
-
-
 def handle_response(e: HttpError):
     if e.resp.status == 404:
         return None
@@ -56,7 +54,24 @@ def request(f: Callable) -> dict:
         handle_response(e)
 
 
-class Service:
-    sheets = service('sheets', 4)
-    drive = service('drive', 3)
-    files = drive.files()
+def set(the_obj, f: Callable) -> type:
+    return obj.set(the_obj, request(f))
+
+
+
+sheets = service('sheets', 4)
+drive = service('drive', 3)
+files = drive.files()
+
+
+class Response:
+    def __init__(self, query: Query):
+        self.q = query
+
+    def list(self, pageToken: str=None) -> tuple[list, str]:
+        fs, t = gets(self._page(pageToken), {'files': [], 'nextPageToken': []})
+        return fs + (t and self.list(t))
+
+    def _page(self, pageToken):
+        FS = f"files({','.join(Query.FIELDS | {'owners'})}),nextPageToken"
+        return request(files.list(q=self.q, fields=FS, pageToken=pageToken))

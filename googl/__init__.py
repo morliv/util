@@ -1,11 +1,11 @@
 from pathlib import Path
 
 import arg
-from googl.api import Service
-from googl.query import Query
-from googl.file import File
-from googl.files import Files
-from googl.map import Map
+from .query import Query
+from .api import Response
+from .file import File
+from .files import Files
+from .map import Map
 
 
 def results():

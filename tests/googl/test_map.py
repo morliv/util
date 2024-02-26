@@ -5,12 +5,12 @@ from typing import List
 import pytest
 
 from relation import Relation
-from googl import results, Files, File, Map
+from googl import results, File, Files, Map
 
 
 def consistent(paths) -> bool:
     possibilities = [f for p in paths \
-                for f in Files(File(parents=['root'])).matches(p.name)]
+                for f in File(parents=['root']).matches(p.name)]
     assert Relation(paths,
                     possibilities,
                     lambda p: Map(p).file()) \

@@ -7,7 +7,7 @@ from typing import Callable, Optional, List
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-from googl import api, Service
+from . import Query, api, Response
 
 
 class File:
@@ -26,7 +26,24 @@ class File:
         if self.id: self.get()
 
     def get(self):
-        return api.set(self, Service.files.get(fileId=self.id))
+        return api.set(self, api.files.get(fileId=self.id))
+
+    def create(self) -> File:
+        return api.set(self, api.files.create(body=Query.body(vars(self)),
+                                           media_body=self.media_body))
+
+    def one(self) -> File:
+        return self.first() or self.create()
+
+    def first(self) -> Optional[File]:
+        if len(fs := self.matches()):
+            for f in fs[1:]: f.delete()
+            return f[0]
+        return None
+
+    def matches(self, pattern=None) -> List[File]:
+        return [File(**r) for r in \
+                Response(Query.body(vars(self), {'id'}, pattern)).list()]
 
     def __eq__(self, other):
         return self.__dict__ == other.__dict__
@@ -41,10 +58,10 @@ class File:
                 == md5(self.content()).hexdigest()
 
     def delete(self) -> Optional[str]:
-        return self.id and api.request(Service.files.delete(fileId=self.id))
+        return self.id and api.request(api.files.delete(fileId=self.id))
 
     def content(self) -> bytes:
-        request = self.id and Service.files.get_media(fileId=self.id)
+        request = self.id and api.files.get_media(fileId=self.id)
         fh = io.BytesIO()
         downloader = MediaIoBaseDownload(fh, request)
         done = False

@@ -1,3 +1,9 @@
+from typing import List
+
+def gets(d: dict, defaults: dict) -> list:
+    return [d.get(k, v) for k, v in defaults.items()]
+
+
 def remove(d: dict, keys):
     for k in keys:
         d.pop(k)

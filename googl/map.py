@@ -1,11 +1,10 @@
 from pathlib import Path
-from typing import List
+from typing import Callable, List
 
 from googleapiclient.http import MediaFileUpload
 
 import file
-from relation import Relation
-from googl import Files, File
+from . import Files, File
 
 
 class Map:
@@ -14,8 +13,8 @@ class Map:
         self.destination = destination
         self.drive = self._drive()
 
-    def sync(self, action: str='one'):
-        getattr(Files(self.drive), action)()
+    def sync(self, action: Callable=File.one):
+        action(self.drive)
         self.local.on_subpaths(
             lambda p: Map(local=p, destination=self.destination / p.name) \
                 .sync(action))

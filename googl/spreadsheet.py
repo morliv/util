@@ -4,14 +4,14 @@ from googleapiclient.errors import HttpError
 import pandas as pd
 import numpy as np
 
-from googl.api import Service
+from . import api
 
 
 def get_values(spreadsheet_id, range_names):
     # creds, _ = google.auth.default()
     # pylint: disable=maybe-no-member
     try:
-        values = Service.sheets.spreadsheets().values()
+        values = api.sheets.spreadsheets().values()
         def get_range(get_func): return get_func(
             spreadsheetId=spreadsheet_id, range=range_names,
             valueRenderOption='UNFORMATTED_VALUE').execute()
