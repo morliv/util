@@ -39,7 +39,7 @@ class File:
     def first(self) -> Optional[File]:
         if len(fs := self.matches()):
             for f in fs[1:]: f.delete()
-            return f[0]
+            return fs[0]
         return None
 
     def matches(self, pattern=None) -> List[File]:
