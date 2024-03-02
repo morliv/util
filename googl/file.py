@@ -5,7 +5,6 @@ from typing import Optional, List
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 from dictionary import removed
-import file
 from . import Query, api, Response
 
 
