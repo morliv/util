@@ -2,7 +2,8 @@ from pathlib import Path
 
 import arg
 from .query import Query
-from .api import Response
+from .api import request, files
+from .response import Response
 from .file import File
 from .files import Files
 from .map import Map

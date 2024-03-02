@@ -5,8 +5,6 @@ import dictionary as d
 
 
 class Query(str):
-    FIELDS = {'name', 'mimeType', 'id', 'parents', 'owners'}
-
     class Clause(str):
         OPS = {'=': ['name', 'mimeType', 'fileId'], 'in': ['parents', 'owners']}
         VAL_FIRST_OPS = {'in'}
@@ -21,14 +19,10 @@ class Query(str):
             return Query.Clause.from_parts('name', p, 'contains')
     
     @staticmethod
-    def body(d: dict, skip: set=set(), pattern=None, logic_op='and') -> Query:
-        if pattern: skip |= {'name'}
-        d = {('fileId' if k == 'id' else k): v for k, v in d.items() \
-                if k in Query.FIELDS - skip and v}
-        return Query.build(d, pattern, logic_op)
- 
-    @staticmethod
-    def build(d: dict=None, pattern=None, logic_op='and') -> Query: 
+    def build(d: dict=None, skip={'id'}, pattern=None, logic_op='and') \
+            -> Query: 
+        for s in skip: d.pop(s, None)
+        if pattern: d.pop('name', None)
         q = Query.concat([Query.expression(k, v) for k, v in d.items()], \
                          logic_op)
         return Query.concat([q, Query.Clause.name_contains_pattern(pattern)]) \

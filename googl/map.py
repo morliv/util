@@ -4,12 +4,12 @@ from typing import Callable, List
 from googleapiclient.http import MediaFileUpload
 
 import file
-from . import Files, File
+from . import api, Files, File
 
 
 class Map:
     def __init__(self, local: Path, destination: Path=Path('/')):
-        self.local = file.File(local, folder_mimetype=File.FOLDER_MIMETYPE)
+        self.local = file.File(local, folder_mimetype=api.FOLDER_MIMETYPE)
         self.destination = destination
         self.drive = self._drive()
 
@@ -18,6 +18,7 @@ class Map:
         self.local.on_subpaths(
             lambda p: Map(local=p, destination=self.destination / p.name) \
                 .sync(action))
+        return self
 
     def _drive(self) -> File:
         return File(self.local.p.name, self.local.mimetype,

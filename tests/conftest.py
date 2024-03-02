@@ -1,3 +1,7 @@
+import sys
+from pathlib import Path
+sys.path.append(str(Path.home() / 'util'))
+print(sys.path)
 import pytest
 
 from file import Structure
@@ -5,6 +9,7 @@ from list import nestedly
 
 
 @pytest.fixture(params=[
+    [],
     ['1'],
     ['1', '2'],
     [[]],
@@ -24,5 +29,5 @@ def structure(blueprint):
     s.clean()
 
 @pytest.fixture
-def paths(structure):
-    yield [f.p for f in structure.files]
+def files(structure):
+    yield structure.files

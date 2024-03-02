@@ -10,7 +10,6 @@ from googleapiclient.errors import HttpError
 
 import obj
 from dictionary import gets
-from . import Query
 
 
 # If modifying these scopes, delete token.json
@@ -21,6 +20,10 @@ SCOPES = [
 DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
 TOKEN = DIR / "token.json"
+
+FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
+FIELDS = {'name', 'mimeType', 'id', 'parents', 'owners'}
+
 
 def service(service_name, version):
     return build(service_name, "v" + str(version), credentials=_creds())
@@ -58,20 +61,6 @@ def set(the_obj, f: Callable) -> type:
     return obj.set(the_obj, request(f))
 
 
-
 sheets = service('sheets', 4)
 drive = service('drive', 3)
 files = drive.files()
-
-
-class Response:
-    def __init__(self, query: Query):
-        self.q = query
-
-    def list(self, pageToken: str=None) -> tuple[list, str]:
-        fs, t = gets(self._page(pageToken), {'files': [], 'nextPageToken': []})
-        return fs + (t and self.list(t))
-
-    def _page(self, pageToken):
-        FS = f"files({','.join(Query.FIELDS | {'owners'})}),nextPageToken"
-        return request(files.list(q=self.q, fields=FS, pageToken=pageToken))

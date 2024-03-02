@@ -1,18 +1,15 @@
 from __future__ import annotations
 from pathlib import Path, PurePath
 from typing import Callable, List, Optional
-from enum import StrEnum, auto
-
-from googleapiclient.http import MediaFileUpload
 
 import path
-from . import File
+from . import api, File
 
 class Files:
     @staticmethod
     def folder(drive: Path) -> File:
         folders = Files.get(drive)
-        if len(folders) != 1 or folders[0].mimeType != File.FOLDER_MIMETYPE:
+        if len(folders) != 1 or folders[0].mimeType != api.FOLDER_MIMETYPE:
             raise Exception(f'{folders} should be singular & a folder')
         return folders[0]
 

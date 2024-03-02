@@ -1,20 +1,17 @@
 from __future__ import annotations
 import io
-from hashlib import md5
-from functools import partial
-from pathlib import Path, PurePath
-from typing import Callable, Optional, List
+from typing import Optional, List
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
+from dictionary import removed
+import file
 from . import Query, api, Response
 
 
 class File:
-    FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
-
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None,
-                 id: Optional[str]=None, parents: List[str]=None,
+                 id: Optional[str]=None, parents: List[str]=['root'],
                  owners: Optional[List[str]]=None,
                  media_body: Optional[MediaFileUpload]=None):
         self.name = name
@@ -28,9 +25,14 @@ class File:
     def get(self):
         return api.set(self, api.files.get(fileId=self.id))
 
-    def create(self) -> File:
-        return api.set(self, api.files.create(body=Query.body(vars(self)),
-                                           media_body=self.media_body))
+    def create(self, uploadType=None) -> File:
+        uploadType = 'multipart' if self.media_body else 'media'
+        return api.set(self, api.files.create(uploadType=uploadType,
+            body=self.body(), media_body=self.media_body))
+
+    def body(self) -> dict:
+        return {('fileId' if k == 'id' else k): v for k, v \
+                in vars(self).items() if k in api.FIELDS and v}
 
     def one(self) -> File:
         return self.first() or self.create()
@@ -43,19 +45,7 @@ class File:
 
     def matches(self, pattern=None) -> List[File]:
         return [File(**r) for r in \
-                Response(Query.body(vars(self), {'id'}, pattern)).list()]
-
-    def __eq__(self, other):
-        return self.__dict__ == other.__dict__
-    
-    def equivalent(self, local: Path) -> bool:
-        if not local.name == self.name: return False
-        return self._equivalent_content(local)
-
-    def _equivalent_content(self, local) -> bool:
-        with open(local, 'rb') as l:
-            return md5(l.read()).hexdigest() \
-                == md5(self.content()).hexdigest()
+                Response(Query.build(self.body(), pattern=pattern)).list()]
 
     def delete(self) -> Optional[str]:
         return self.id and api.request(api.files.delete(fileId=self.id))

@@ -7,11 +7,12 @@ from pathlib import Path
 from typing import Callable, Any, List, TypeVar
 
 
-def temp_file(content, dir=None):
+def temp_file(content=None, dir=None):
     file = tempfile.NamedTemporaryFile(mode='w+t', dir=dir, delete=False)
-    file.write(content)
-    file.flush()
-    file.seek(0)
+    if content:
+        file.write(content)
+        file.flush()
+        file.seek(0)
     return file
  
 
@@ -25,7 +26,7 @@ class File:
         if p:
             self.p = p
         else:
-            self.f = create(content, dir) if content else create(dir=dir)
+            self.f = create(content, dir)
             self.p = path(self.f)
         self.mimetype = magic.from_file(str(self.p), mime=True) \
             if self.p.is_file() else folder_mimetype
@@ -76,8 +77,7 @@ class Structure:
 class Dir(File):
     def __init__(self, blueprint=[], dir=None,
                  create=tempfile.TemporaryDirectory):
-        self.f = create(dir=dir)
-        self.p = path(self.f)
+        super().__init__(dir=dir, create=create)
         self.structure = Structure(blueprint, dir)
    
 

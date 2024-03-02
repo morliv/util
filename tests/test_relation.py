@@ -13,7 +13,7 @@ class TestSets(TestCase):
                                  [{'\x00'}, {'\x01'}, {'\x00', '\x01'}])
         sets = list(map(Params._make, list(sets)))
         actuals = [s.function_type(Relation(
-            s.domain, s.range, chr)) for s in sets]
+            s.domain, s.range, lambda o, c: chr(o) == c)) for s in sets]
         results = [True, False, True,
                    False, True, True,
                    False, False, True,
