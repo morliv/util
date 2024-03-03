@@ -14,19 +14,14 @@ class Files:
         return folders[0]
 
     @staticmethod
-    def get(drive: PurePath=PurePath('/'),
-            action: Callable=File.matches) -> List[File]:
+    def get(drive: PurePath=PurePath('/'), action: Callable=File.matches) \
+            -> List[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := Files.get(drive.parent):
-            return Files(File(name=drive.name,
-                              parents=[f.id for f in parents]))._files(action)
+            return File(name=drive.name, parents=[f.id for f in parents]) \
+                .files(action)
         return []
 
-    @staticmethod
-    def _files(action: Callable=File.matches) -> List[File]:
-        chosen = action()
-        return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
-    
     @staticmethod
     def prefixed(fs: List[File], prefix) -> List[File]:
         return list(filter(lambda f: f.name.startswith(prefix), fs)) 

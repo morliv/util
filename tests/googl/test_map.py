@@ -7,7 +7,7 @@ import pytest
 
 from relation import Relation
 import file
-from googl import results, api, File, Files, Map
+from googl import results, api, File, Map
 
 
 def _equal_contents(local: file.File, drive: File) -> bool:

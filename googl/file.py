@@ -1,6 +1,6 @@
 from __future__ import annotations
 import io
-from typing import Optional, List
+from typing import Optional, List, Callable
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
@@ -42,6 +42,11 @@ class File:
             return fs[0]
         return None
 
+    def files(self, action: Callable=None) -> List[File]:
+        if not action: action = File.matches
+        chosen = action(self)
+        return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
+ 
     def matches(self, pattern=None) -> List[File]:
         return [File(**r) for r in \
                 Response(Query.build(self.body(), pattern=pattern)).list()]

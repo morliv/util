@@ -29,3 +29,7 @@ class Map:
         return MediaFileUpload(
             str(self.local.p), mimetype=self.local.mimetype) \
             if self.local.p.is_file() else None
+
+
+if __name__ == '__main__':
+    Map(Path('~/cure/data').expanduser()).sync()
