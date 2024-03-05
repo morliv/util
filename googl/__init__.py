@@ -10,18 +10,14 @@ from .map import Map
 
 
 def results():
-    return act(parsed_args())
+    return arg.act(parsed_args(), [listing, mapping])
 
 
 def parsed_args():
-    args = [(('-l', '--local-source-path'), {'type': str}),
-            (('-d', '--drive-path'), {'default': '/', 'type': str}),
-            (('-f', '--list-files'), {'action': 'store_true'})]
-    return arg.parse(args)
-
-
-def act(args):
-    return {f.__name__: f(args) for f in (listing, mapping)}
+    return arg.parse([
+        (('-l', '--local-source-path'), {'type': str}),
+        (('-d', '--drive-path'), {'default': '/', 'type': str}),
+        (('-f', '--list-files'), {'action': 'store_true'})])
 
 
 def listing(args):

@@ -38,7 +38,7 @@ class File:
         self.f.seek(0)
         return content
 
-    def on_subpaths(self, f: Callable[[Path], Any]):
+    def recurse(self, f: Callable[[Path], Any]):
         if self.p.is_dir():
             for p in self.p.iterdir():
                 f(p)

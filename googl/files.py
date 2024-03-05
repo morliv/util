@@ -8,7 +8,7 @@ from . import api, File
 class Files:
     @staticmethod
     def folder(drive: Path) -> File:
-        folders = Files.get(drive)
+        folders = Files.get(drive, File.one)
         if len(folders) != 1 or folders[0].mimeType != api.FOLDER_MIMETYPE:
             raise Exception(f'{folders} should be singular & a folder')
         return folders[0]

@@ -8,17 +8,14 @@ from . import api, Files, File
 
 
 class Map:
-    def __init__(self, local: Path, destination: Path=Path('/')):
-        self.local = file.File(local, folder_mimetype=api.FOLDER_MIMETYPE)
+    def __init__(self, p: Path, destination: Path=Path('/'), \
+                 action: Callable[[File], File | List[File]]=File.one):
+        self.local = file.File(p, folder_mimetype=api.FOLDER_MIMETYPE)
         self.destination = destination
-        self.drive = self._drive()
-
-    def sync(self, action: Callable=File.one):
-        action(self.drive)
-        self.local.on_subpaths(
-            lambda p: Map(local=p, destination=self.destination / p.name) \
-                .sync(action))
-        return self
+        self.drive = action(self._drive())
+        if p.is_dir():
+            self.submaps = [Map(sub_p, destination / p.name, action) \
+                            for sub_p in p.iterdir()]
 
     def _drive(self) -> File:
         return File(self.local.p.name, self.local.mimetype,
@@ -29,7 +26,3 @@ class Map:
         return MediaFileUpload(
             str(self.local.p), mimetype=self.local.mimetype) \
             if self.local.p.is_file() else None
-
-
-if __name__ == '__main__':
-    Map(Path('~/cure/data').expanduser()).sync()

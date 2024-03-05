@@ -46,7 +46,8 @@ class File:
         if not action: action = File.matches
         chosen = action(self)
         return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
- 
+    
+    
     def matches(self, pattern=None) -> List[File]:
         return [File(**r) for r in \
                 Response(Query.build(self.body(), pattern=pattern)).list()]

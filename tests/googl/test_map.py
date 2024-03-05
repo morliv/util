@@ -42,7 +42,7 @@ def finalize(files: List[Path], maps: List[Map]):
 
 
 def test_drive_map(files):
-    finalize(files, [Map(f.p).sync() for f in files])
+    finalize(files, [Map(f.p) for f in files])
 
 
 @pytest.mark.skip
