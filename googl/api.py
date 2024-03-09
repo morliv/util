@@ -1,6 +1,6 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Callable, List
+from typing import Callable
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -9,7 +9,6 @@ from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
 import obj
-from dictionary import gets
 
 
 # If modifying these scopes, delete token.json

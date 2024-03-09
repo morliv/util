@@ -2,6 +2,7 @@ import sys
 from pathlib import Path
 sys.path.append(str(Path.home() / 'util'))
 print(sys.path)
+
 import pytest
 
 from file import Structure
@@ -22,12 +23,14 @@ from list import nestedly
 def blueprint(request):
     return nestedly(request.param, lambda s: "Content " + s)
 
+
 @pytest.fixture
 def structure(blueprint):
     s = Structure(blueprint)
     yield s
     s.clean()
 
+
 @pytest.fixture
-def files(structure):
-    yield structure.files
+def paths(structure):
+    yield [f.p for f in structure.files]

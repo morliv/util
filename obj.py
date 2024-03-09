@@ -1,5 +1,5 @@
 import copy
-from typing import Optional, Callable
+from typing import Optional
 
 import dictionary as d
 

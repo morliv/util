@@ -5,8 +5,6 @@ from .query import Query
 from .api import request, files
 from .response import Response
 from .file import File
-from .files import Files
-from .map import Map
 
 
 def results():
@@ -14,10 +12,12 @@ def results():
 
 
 def parsed_args():
-    return arg.parse([
+    args = arg.parse([
         (('-l', '--local-source-path'), {'type': str}),
         (('-d', '--drive-path'), {'default': '/', 'type': str}),
         (('-f', '--list-files'), {'action': 'store_true'})])
+    args.local_source_path = Path(args.local_source_path).expanduser()
+    return args
 
 
 def listing(args):
@@ -26,4 +26,4 @@ def listing(args):
 
 def mapping(args):
     if args.local_source_path:
-        return Map(Path(args.local_source_path), Path(args.drive_path))
+        return File.file(Path(args.local_source_path), Path(args.drive_path))
