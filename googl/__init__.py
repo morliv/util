@@ -4,7 +4,7 @@ import arg
 from .query import Query
 from .api import request, files
 from .response import Response
-from .file import File
+from .file import File, Files
 
 
 def results():
@@ -21,9 +21,10 @@ def parsed_args():
 
 
 def listing(args):
-    if args.list_files: return File.files(args.drive_path)
+    if args.list_files: return Files.get(args.drive_path)
 
 
 def mapping(args):
     if args.local_source_path:
-        return File.file(Path(args.local_source_path), Path(args.drive_path))
+        return File(p=Path(args.local_source_path), parents=\
+                    [Files.folder(Path(args.drive_path)).id])

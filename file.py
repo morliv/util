@@ -1,10 +1,9 @@
 from __future__ import annotations
-import shutil
-import difflib
 import tempfile
 import magic
 from pathlib import Path
 from typing import Callable, Any, List, TypeVar
+from hashlib import md5
 
 
 def temp_file(content=None, dir=None):
@@ -106,6 +105,17 @@ def matches_ignoring_spaces_and_line_symbols(name: str, strings: List[str]):
 def read_file(file_path):
     with open(file_path) as file:
         return file.readlines()
+
+
+def equivalent(bs: List[bytes]) -> bool:
+    return len(set(md5(b).hexdigest() for b in bs)) < 2
+
+
+def content_equivalents(p: Path, candidates: List, candidates_read: Callable) \
+        -> List[File]:
+    with open(p, 'rb') as f:
+        return list(filter(
+            lambda c: equivalent([f.read(), candidates_read(c)]), candidates))
 
 
 def files_are_equivalent(file1_path: Path, file2_path: Path, print_diff=True):

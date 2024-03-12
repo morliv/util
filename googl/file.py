@@ -1,19 +1,16 @@
 from __future__ import annotations
 import io
-from typing import Optional, List, Callable
+import magic
+from typing import Optional, List, Callable, Self
 from pathlib import Path, PurePath
 from hashlib import md5
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import path
+import file
 from relation import Relation
 from . import Query, api, Response
-
-
-def _equal_content(p: Path, drive: File) -> bool:
-    with open(p, 'rb') as l:
-        return md5(l.read()).hexdigest() == md5(drive.content()).hexdigest()
 
 
 def _equal_contents(p: Path, drive: File) -> bool:
@@ -21,68 +18,68 @@ def _equal_contents(p: Path, drive: File) -> bool:
         File(parents=[drive.id]).matches(), equal).bijection()
 
 
-def _equivalency_func(are_dirs: bool) -> Callable:
-    return _equal_contents if are_dirs else _equal_content
-
-
 def equal(p: Path, drive: File) -> bool:
     return p.name == drive.name \
         and (p.is_dir() == (drive.mimeType == api.FOLDER_MIMETYPE)) \
-        and _equivalency_func(p.is_dir())(p, drive)
+        and _equal_contents(p, drive) if p.is_dir() else \
+        file.content_equivalents(p, [drive], File.content)
 
 
 class File:
     def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None,
                  id: Optional[str]=None, parents: List[str]=['root'],
-                 owners: Optional[List[str]]=None):
-        self.name = name
-        self.mimeType = mimeType
+                 owners: Optional[List[str]]=None, p: Optional[Path]=None):
+        self.name = name or p.name if p else None
+        self.mimeType = mimeType or (p and (api.FOLDER_MIMETYPE if p.is_dir() \
+                else magic.from_file(p, mime=True)))
         self.id = id
         self.parents = parents
         self.owners = owners
-        if self.id: self.get()
+        self.p = p 
+        if id: self.get()
+        if p:
+            self.one()
 
-    def get(self):
+    def get(self) -> Self:
         return api.set(self, api.files.get(fileId=self.id))
-
-    def create(self, media=None) -> File:
-        return api.set(self, api.files.create(uploadType=media and 'multipart',
-            body=self.body(), media_body=media))
-
-    @staticmethod
-    def load(p: Path, parents: List[str]=['root']):
-        f = File(name=p.name, parents=parents)
-        return f.one(MediaFileUpload(str(p))) if p.is_file() else f._dir(p)
     
-    def _dir(self, p: Path) -> File:
-        self.mimeType = api.FOLDER_MIMETYPE
-        self.one()
-        for s in p.iterdir(): File.load(s, parents=[self.id])
+    def one(self) -> Self:
+        if len(fs := self.matches()):
+            for f in fs[1:]: f.delete()
+            return fs[0]
+        return self.create()
+
+    def matches(self, pattern=None) -> List[File]:
+        metadata_matches = [File(**r) for r in Response(
+            Query.build(self.body(), pattern=pattern)).list()]
+        if self.p and self.p.is_file():
+            return file.content_equivalents(self.p, metadata_matches, \
+                                         File.content)
+        return metadata_matches
+
+    def create(self) -> Self:
+        if not self.p or self.p.is_dir():
+            self._create()
+        elif self.p.is_file():
+            self._create('multipart', MediaFileUpload(str(self.p)))
+        return self
+
+    def _create(self, uploadType=None, media: MediaFileUpload=None) -> Self:
+        api.set(self, api.files.create(uploadType=uploadType, body=self.body(),
+            media_body=media))
+        if self.p and self.p.is_dir():
+            for s in self.p.iterdir(): File(p=s, parents=[self.id]).one()
         return self
 
     def body(self) -> dict:
         return {('fileId' if k == 'id' else k): v for k, v \
                 in vars(self).items() if k in api.FIELDS and v}
 
-    def one(self, media: MediaFileUpload=None) -> File:
-        if len(fs := self.equivalents()):
-            for f in fs[1:]: f.delete()
-            return fs[0]
-        return self.create(media)
-
-    def equivalents(self) -> List[File]:
-        return list(filter(lambda f: self.content() != f.content(), \
-            self.matches()))
-
     def files(self, action: Callable=None) -> List[File]:
         if not action: action = File.matches
         chosen = action(self)
         return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
     
-    def matches(self, pattern=None) -> List[File]:
-        return [File(**r) for r in \
-            Response(Query.build(self.body(), pattern=pattern)).list()]
-
     def delete(self) -> Optional[str]:
         return self.id and api.request(api.files.delete(fileId=self.id))
 
