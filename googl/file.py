@@ -9,6 +9,7 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import path
 import file
+import obj
 from relation import Relation
 from . import Query, api, Response
 
@@ -22,7 +23,7 @@ def equal(p: Path, drive: File) -> bool:
     return p.name == drive.name \
         and (p.is_dir() == (drive.mimeType == api.FOLDER_MIMETYPE)) \
         and _equal_contents(p, drive) if p.is_dir() else \
-        file.content_equivalents(p, [drive], File.content)
+        file.content_equivalents(p, [drive], lambda f: File.content(f.id))
 
 
 class File:
@@ -37,8 +38,7 @@ class File:
         self.owners = owners
         self.p = p 
         if id: self.get()
-        if p:
-            self.one()
+        if p: self.one()
 
     def get(self) -> Self:
         return api.set(self, api.files.get(fileId=self.id))
@@ -46,30 +46,32 @@ class File:
     def one(self) -> Self:
         if len(fs := self.matches()):
             for f in fs[1:]: f.delete()
-            return fs[0]
+            return obj.set(self, fs[0]).recurse()
         return self.create()
 
     def matches(self, pattern=None) -> List[File]:
-        metadata_matches = [File(**r) for r in Response(
-            Query.build(self.body(), pattern=pattern)).list()]
+        metadata_matches = [File(**r) for r in Response(Query.build(
+            self.body(), pattern=pattern)).list()]
         if self.p and self.p.is_file():
             return file.content_equivalents(self.p, metadata_matches, \
-                                         File.content)
+                                            lambda f: File.content(f.id))
         return metadata_matches
+
+    def recurse(self) -> Self:
+        if self.p and self.p.is_dir():
+            for s in self.p.iterdir(): File(p=s, parents=[self.id]).one()
+        return self
 
     def create(self) -> Self:
         if not self.p or self.p.is_dir():
             self._create()
         elif self.p.is_file():
             self._create('multipart', MediaFileUpload(str(self.p)))
-        return self
+        return self.recurse()
 
     def _create(self, uploadType=None, media: MediaFileUpload=None) -> Self:
-        api.set(self, api.files.create(uploadType=uploadType, body=self.body(),
-            media_body=media))
-        if self.p and self.p.is_dir():
-            for s in self.p.iterdir(): File(p=s, parents=[self.id]).one()
-        return self
+        return api.set(self, api.files.create(uploadType=uploadType,
+            body=self.body(), media_body=media))
 
     def body(self) -> dict:
         return {('fileId' if k == 'id' else k): v for k, v \
@@ -78,14 +80,18 @@ class File:
     def files(self, action: Callable=None) -> List[File]:
         if not action: action = File.matches
         chosen = action(self)
-        return list(chosen) if hasattr(chosen, '__iter__') else [chosen]
+        return list(chosen) if hasattr(chosen, '__iter__') \
+            else [chosen]
     
     def delete(self) -> Optional[str]:
         return self.id and api.request(api.files.delete(fileId=self.id))
 
-    def content(self) -> bytes:
+    @staticmethod
+    def content(id) -> Optional[bytes]:
+        if int(api.request(api.files.get(fileId=id, fields='size')) \
+               .get('size'), 0) == 0: return None
         fh = io.BytesIO()
-        request = self.id and api.files.get_media(fileId=self.id)
+        request = api.files.get_media(fileId=id)
         downloader = MediaIoBaseDownload(fh, request)
         while not downloader.next_chunk()[1]: continue
         return fh.getvalue()

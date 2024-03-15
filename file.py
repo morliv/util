@@ -112,7 +112,7 @@ def equivalent(bs: List[bytes]) -> bool:
 
 
 def content_equivalents(p: Path, candidates: List, candidates_read: Callable) \
-        -> List[File]:
+        -> List:
     with open(p, 'rb') as f:
         return list(filter(
             lambda c: equivalent([f.read(), candidates_read(c)]), candidates))

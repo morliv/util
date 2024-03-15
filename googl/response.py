@@ -6,7 +6,7 @@ class Response:
     def __init__(self, query: Query):
         self.q = query
 
-    def list(self, pageToken: str=None) -> tuple[list, str]:
+    def list(self, pageToken: str=None) -> list[dict]:
         fs, t = gets(self._page(pageToken), {'files': [], 'nextPageToken': []})
         return fs + (t and self.list(t))
 

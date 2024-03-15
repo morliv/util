@@ -6,7 +6,7 @@ import dictionary as d
 
 def set(obj: type, response, anew=False) -> Optional[type]:
     if anew:
-        obj = copy.copy(obj)
+        obj = copy.deepcopy(obj)
     if isinstance(response, type(obj)):
         response = vars(response)
     if response:
