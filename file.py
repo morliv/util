@@ -2,7 +2,7 @@ from __future__ import annotations
 import tempfile
 import magic
 from pathlib import Path
-from typing import Callable, Any, List, TypeVar
+from typing import Any, TypeVar
 from hashlib import md5
 
 
@@ -37,14 +37,14 @@ class File:
         self.f.seek(0)
         return content
 
-    def recurse(self, f: Callable[[Path], Any]):
+    def recurse(self, f: callable[[Path], Any]):
         if self.p.is_dir():
             for p in self.p.iterdir():
                 f(p)
 
 
-Representation = TypeVar('Representation', str, List)
-StructureRepresentation = List[Representation]
+Representation = TypeVar('Representation', str, list)
+StructureRepresentation = list[Representation]
 
 
 class Structure:
@@ -57,7 +57,7 @@ class Structure:
         self.dir = dir
         self.files = self._files()
     
-    def _files(self) -> List[File]:
+    def _files(self) -> list[File]:
         return [self._file(content) for content in self.blueprint]
 
     def _file(self, content: Representation) -> File:
@@ -96,7 +96,7 @@ def remove_spaces_and_line_symbols(name: str):
     return name
 
 
-def matches_ignoring_spaces_and_line_symbols(name: str, strings: List[str]):
+def matches_ignoring_spaces_and_line_symbols(name: str, strings: list[str]):
     return remove_spaces_and_line_symbols(name) in [
         remove_spaces_and_line_symbols(string) for string in strings
     ]
@@ -107,12 +107,12 @@ def read_file(file_path):
         return file.readlines()
 
 
-def equivalent(bs: List[bytes]) -> bool:
+def equivalent(bs: list[bytes]) -> bool:
     return len(set(md5(b).hexdigest() for b in bs)) < 2
 
 
-def content_equivalents(p: Path, candidates: List, candidates_read: Callable) \
-        -> List:
+def content_equivalents(p: Path, candidates: list, candidates_read: callable) \
+        -> list:
     with open(p, 'rb') as f:
         return list(filter(
             lambda c: equivalent([f.read(), candidates_read(c)]), candidates))

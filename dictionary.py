@@ -1,16 +1,15 @@
-from typing import List
 from copy import deepcopy
 
 def gets(d: dict, defaults: dict) -> list:
     return [d.get(k, v) for k, v in defaults.items()]
 
 
-def remove(d: dict, keys: List):
+def remove(d: dict, keys: list):
     for k in keys:
         d.pop(k)
     return d
 
-def removed(d: dict, keys: List):
+def removed(d: dict, keys: list):
     remove(deepcopy(d), keys)
 
 def replace_key(dictionary: dict, previous: str, new: str) -> dict:

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from pathlib import Path
-from typing import Callable
 
 from googleapiclient.discovery import build
 from google_auth_oauthlib.flow import InstalledAppFlow
@@ -49,14 +48,14 @@ def handle_response(e: HttpError):
     raise
 
 
-def request(f: Callable) -> dict:
+def request(f: callable) -> dict:
     try:
         return f.execute()
     except HttpError as e:
         handle_response(e)
 
 
-def set(the_obj, f: Callable) -> type:
+def set(the_obj, f: callable) -> type:
     return obj.set(the_obj, request(f))
 
 

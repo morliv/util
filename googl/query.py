@@ -1,5 +1,4 @@
 from __future__ import annotations
-from typing import List
 
 import dictionary as d
 
@@ -29,7 +28,7 @@ class Query(str):
             if pattern else q
 
     @staticmethod
-    def concat(expressions: List[str], logic_op='and') -> Query:
+    def concat(expressions: list[str], logic_op='and') -> Query:
         return f' {logic_op} '.join(expressions)
 
     @staticmethod

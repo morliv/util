@@ -5,7 +5,6 @@ import sys
 import argparse
 import json
 from pathlib import Path
-from typing import List
 
 import pyperclip
 import openai
@@ -24,7 +23,7 @@ def main():
     print(response.content)
     new_message(chat, response)
 
-def new_message(chat, message) -> List[dict]:
+def new_message(chat, message) -> list[dict]:
     if chat.exists():
         with chat.open("r") as f:
             file_content = json.load(f)

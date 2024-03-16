@@ -1,7 +1,7 @@
 from __future__ import annotations
 import io
 import magic
-from typing import Optional, List, Callable, Self
+from typing import Self
 from pathlib import Path, PurePath
 from hashlib import md5
 
@@ -27,9 +27,9 @@ def equal(p: Path, drive: File) -> bool:
 
 
 class File:
-    def __init__(self, name: Optional[str]=None, mimeType: Optional[str]=None,
-                 id: Optional[str]=None, parents: List[str]=['root'],
-                 owners: Optional[List[str]]=None, p: Optional[Path]=None):
+    def __init__(self, name: str | None=None, mimeType: str | None=None,
+                 id: str | None=None, parents: list[str]=['root'],
+                 owners: list[str] | None=None, p: Path=None):
         self.name = name or p.name if p else None
         self.mimeType = mimeType or (p and (api.FOLDER_MIMETYPE if p.is_dir() \
                 else magic.from_file(p, mime=True)))
@@ -46,10 +46,14 @@ class File:
     def one(self) -> Self:
         if len(fs := self.matches()):
             for f in fs[1:]: f.delete()
-            return obj.set(self, fs[0]).recurse()
-        return self.create()
+            f = obj.update(self, fs[0])
+            print(vars(f))
+            return f.recurse()
+        f = self.create()
+        print(vars(f))
+        return f
 
-    def matches(self, pattern=None) -> List[File]:
+    def matches(self, pattern=None) -> list[File]:
         metadata_matches = [File(**r) for r in Response(Query.build(
             self.body(), pattern=pattern)).list()]
         if self.p and self.p.is_file():
@@ -77,17 +81,17 @@ class File:
         return {('fileId' if k == 'id' else k): v for k, v \
                 in vars(self).items() if k in api.FIELDS and v}
 
-    def files(self, action: Callable=None) -> List[File]:
+    def files(self, action: callable=None) -> list[File]:
         if not action: action = File.matches
         chosen = action(self)
         return list(chosen) if hasattr(chosen, '__iter__') \
             else [chosen]
     
-    def delete(self) -> Optional[str]:
+    def delete(self) -> str | None:
         return self.id and api.request(api.files.delete(fileId=self.id))
 
     @staticmethod
-    def content(id) -> Optional[bytes]:
+    def content(id) -> bytes:
         if int(api.request(api.files.get(fileId=id, fields='size')) \
                .get('size'), 0) == 0: return None
         fh = io.BytesIO()
@@ -113,8 +117,8 @@ class Files:
         return folders[0]
 
     @staticmethod
-    def get(drive: PurePath=PurePath('/'), action: Callable=File.matches) \
-            -> List[File]:
+    def get(drive: PurePath=PurePath('/'), action: callable=File.matches) \
+            -> list[File]:
         if path.top_level(drive): return [File(id='root')]
         if parents := Files.get(drive.parent):
             return File(name=drive.name, parents=[f.id for f in parents]) \
@@ -122,11 +126,11 @@ class Files:
         return []
 
     @staticmethod
-    def prefixed(fs: List[File], prefix) -> List[File]:
+    def prefixed(fs: list[File], prefix) -> list[File]:
         return list(filter(lambda f: f.name.startswith(prefix), fs)) 
 
     @staticmethod
-    def delete_by_prefix(fs: List[File], prefix: str):
+    def delete_by_prefix(fs: list[File], prefix: str):
         for f in fs:
             if f.name.startswith(prefix):
                 f.delete()

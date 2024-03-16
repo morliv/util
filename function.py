@@ -1,7 +1,6 @@
 import inspect
-from typing import Callable
 
-def keys(func: Callable):
+def keys(func: callable):
     params = inspect.signature(func).parameters
     return list(params.keys())
 

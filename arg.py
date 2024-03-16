@@ -1,5 +1,4 @@
 import argparse
-from typing import List, Callable
 
 def parse(arg_kwarg_list):
     p = argparse.ArgumentParser()
@@ -8,5 +7,5 @@ def parse(arg_kwarg_list):
     return p.parse_args()
 
 
-def act(args, fs: List[Callable]):
+def act(args, fs: list[callable]):
     return {f.__name__: f(args) for f in fs}
