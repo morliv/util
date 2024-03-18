@@ -19,9 +19,6 @@ DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
 TOKEN = DIR / "token.json"
 
-FOLDER_MIMETYPE = 'application/vnd.google-apps.folder'
-FIELDS = {'name', 'mimeType', 'id', 'parents', 'owners'}
-
 
 def service(service_name, version):
     return build(service_name, "v" + str(version), credentials=_creds())
@@ -35,7 +32,8 @@ def _creds():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = InstalledAppFlow.from_client_secrets_file(CREDENTIALS, SCOPES)
+            flow = InstalledAppFlow. \
+                from_client_secrets_file(CREDENTIALS, SCOPES)
             creds = flow.run_local_server(port=0)
         with open(TOKEN, "w") as token:
             token.write(creds.to_json())
@@ -61,4 +59,3 @@ def set(the_obj, f: callable) -> type:
 
 sheets = service('sheets', 4)
 drive = service('drive', 3)
-files = drive.files()

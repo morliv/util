@@ -6,7 +6,7 @@ def gets(d: dict, defaults: dict) -> list:
 
 def remove(d: dict, keys: list):
     for k in keys:
-        d.pop(k)
+        d.pop(k, None)
     return d
 
 def removed(d: dict, keys: list):

@@ -1,5 +1,6 @@
 import copy
 
+import dictionary as d
 
 def set(obj: type, response, anew=False) -> type | None:
     if anew:
@@ -14,8 +15,7 @@ def set(obj: type, response, anew=False) -> type | None:
 
 def update(o: type, o2: type):
     for a in vars(o).keys():
-        if hasattr(o2, a):
-            setattr(o, a, getattr(o2, a))
+        if v := getattr(o2, a, None): setattr(o, a, v)
     return o
 
 

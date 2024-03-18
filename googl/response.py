@@ -1,15 +1,6 @@
-from dictionary import gets
-from . import api, request, files, Query
+from . import api, request, Query
 
 
 class Response:
     def __init__(self, query: Query):
         self.q = query
-
-    def list(self, pageToken: str=None) -> list[dict]:
-        fs, t = gets(self._page(pageToken), {'files': [], 'nextPageToken': []})
-        return fs + (t and self.list(t))
-
-    def _page(self, pageToken):
-        FS = f"files({','.join(api.FIELDS | {'owners'})}),nextPageToken"
-        return request(files.list(q=self.q, fields=FS, pageToken=pageToken))
