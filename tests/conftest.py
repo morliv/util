@@ -20,7 +20,8 @@ from list import nestedly
     [['1', '2'], ['3', '4']],
     [[], '1'],
     [[[['1', '2']]]],
-    [[[['1', '2']], ['3', '4']]]
+    [[[['1', '2']], ['3', '4']]],
+    [[[['1', '2', '3', []]]]]
 ])
 def blueprint(request):
     return nestedly(request.param, lambda s: "Content " + s)

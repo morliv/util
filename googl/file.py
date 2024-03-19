@@ -56,9 +56,8 @@ class File:
         return self
 
     def matches(self, pattern=None) -> list[File]:
-        q = Query.build(dictionary.remove(self.body(), ['fileId']),
-                        pattern=pattern)
-        metadata_matches = [File(**d) for d in File.list(q)]
+        metadata_matches = File.list(Query.build(
+            dictionary.remove(self.body(), ['fileId']), pattern=pattern))
         if self.p and self.p.is_file():
             return file.content_equivalents(self.p, metadata_matches, \
                                             lambda f: File.content(f.id))
@@ -66,9 +65,9 @@ class File:
 
     @staticmethod
     def list(q: Query, pageToken: str=None) -> list[dict]:
-        fs, t = gets(File._page(q, pageToken), {'files': [],
+        ds, t = gets(File._page(q, pageToken), {'files': [],
                                                 'nextPageToken': []})
-        return fs + (t and File.list(q, t))
+        return [File(**d) for d in ds] + (t and File.list(q, t))
 
     @staticmethod
     def _page(q: Query, pageToken: str) -> list[dict]:
