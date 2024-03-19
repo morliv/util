@@ -24,6 +24,5 @@ def listing(args):
 
 
 def mapping(args):
-    if args.local_source_path:
-        return File(parents=[File.folder(Path(args.drive_path)).id],
-                    p=Path(args.local_source_path))
+    if args.local_source_path: File.map(args.local_source_path, \
+                                        args.drive_path)

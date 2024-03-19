@@ -7,8 +7,6 @@ from google.auth.transport.requests import Request
 from google.oauth2.credentials import Credentials
 from googleapiclient.errors import HttpError
 
-import obj
-
 
 # If modifying these scopes, delete token.json
 SCOPES = [
@@ -18,10 +16,6 @@ SCOPES = [
 DIR = Path(__file__).resolve().parent
 CREDENTIALS = DIR / "credentials.json"
 TOKEN = DIR / "token.json"
-
-
-def service(service_name, version):
-    return build(service_name, "v" + str(version), credentials=_creds())
 
 
 def _creds():
@@ -39,6 +33,13 @@ def _creds():
             token.write(creds.to_json())
     return creds
 
+def service(service_name, version):
+    return build(service_name, "v" + str(version), credentials=_creds())
+
+
+sheets = service('sheets', 4)
+drive = service('drive', 3)
+
 
 def handle_response(e: HttpError):
     if e.resp.status == 404:
@@ -52,10 +53,3 @@ def request(f: callable) -> dict:
     except HttpError as e:
         handle_response(e)
 
-
-def set(the_obj, f: callable) -> type:
-    return obj.set(the_obj, request(f))
-
-
-sheets = service('sheets', 4)
-drive = service('drive', 3)

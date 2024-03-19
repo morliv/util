@@ -43,16 +43,13 @@ class File:
         self.parents = parents
         self.owners = owners
         self.p = p 
-        if id: self.get()
+        if id: self.__dict__ |= api.request(files.get(fileId=id))
         if p: self.one()
 
-    def get(self) -> Self:
-        return api.set(self, files.get(fileId=self.id))
-    
     def one(self) -> Self:
         if len(fs := self.matches()):
             for f in fs[1:]: f.delete()
-            obj.update(self, fs[0])
+            self.__dict__ |= fs[0]
             return self.recurse()
         self.create()
         print(vars(self))
@@ -61,25 +58,26 @@ class File:
     def matches(self, pattern=None) -> list[File]:
         q = Query.build(dictionary.remove(self.body(), ['fileId']),
                         pattern=pattern)
-        metadata_matches = [File(**d) for d in File._list(q)]
+        metadata_matches = [File(**d) for d in File.list(q)]
         if self.p and self.p.is_file():
             return file.content_equivalents(self.p, metadata_matches, \
                                             lambda f: File.content(f.id))
         return metadata_matches
 
     @staticmethod
-    def _list(q: Query, pageToken: str=None) -> list[dict]:
-        fs, t = gets(File._page(q, pageToken), {'files': [], 'nextPageToken': []})
-        return fs + (t and File._list(q, t))
+    def list(q: Query, pageToken: str=None) -> list[dict]:
+        fs, t = gets(File._page(q, pageToken), {'files': [],
+                                                'nextPageToken': []})
+        return fs + (t and File.list(q, t))
 
     @staticmethod
-    def _page(q: Query, pageToken):
+    def _page(q: Query, pageToken: str) -> list[dict]:
         FS = f"files({','.join(FIELDS | {'owners'})}),nextPageToken"
         return request(files.list(q=q, fields=FS, pageToken=pageToken))
 
     def recurse(self) -> Self:
         if self.p and self.p.is_dir():
-            for s in self.p.iterdir(): File(p=s, parents=[self.id]).one()
+            for s in self.p.iterdir(): File(parents=[self.id], p=s).one()
         return self
 
     def create(self) -> Self:
@@ -90,8 +88,9 @@ class File:
         return self.recurse()
 
     def _create(self, uploadType=None, media: MediaFileUpload=None) -> Self:
-        return api.set(self, files.create(uploadType=uploadType,
+        self.__dict__ |= api.request(files.create(uploadType=uploadType,
             body=self.body(), media_body=media))
+        return self
 
     def body(self) -> dict:
         return {('fileId' if k == 'id' else k): v for k, v \
@@ -117,14 +116,18 @@ class File:
         return fh.getvalue()
 
     @staticmethod
-    def folder(drive: Path) -> File:
-        folders = File.path(drive, File.one)
+    def map(p: Path, drive: PurePath) -> File:
+        return File(p=p).at(drive, File.one)
+
+    @staticmethod
+    def folder(drive: PurePath) -> File:
+        folders = File.at(drive, File.one)
         if len(folders) != 1 or folders[0].mimeType != FOLDER_MIMETYPE:
             raise Exception(f'{folders} should be singular & a folder')
         return folders[0]
 
     @staticmethod
-    def path(drive: PurePath=PurePath('/'), action: callable=None) \
+    def at(drive: PurePath=PurePath('/'), action: callable=None) \
             -> list[File]:
         if not action: action = File.matches
         if path.top_level(drive): return [File(id='root')]
