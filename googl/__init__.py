@@ -1,4 +1,4 @@
-from pathlib import Path
+from pathlib import Path, PurePath
 
 import arg
 from .query import Query
@@ -16,6 +16,7 @@ def parsed_args():
         (('-d', '--drive-path'), {'default': '/', 'type': str}),
         (('-f', '--list-files'), {'action': 'store_true'})])
     args.local_source_path = Path(args.local_source_path).expanduser()
+    args.drive_path = PurePath(args.drive_path)
     return args
 
 
@@ -24,5 +25,5 @@ def listing(args):
 
 
 def mapping(args):
-    if args.local_source_path: File.map(args.local_source_path, \
-                                        args.drive_path)
+    if args.local_source_path: return File.sync(args.local_source_path,
+                                                args.drive_path)

@@ -3,14 +3,12 @@ import io
 import magic
 from typing import Self
 from pathlib import Path, PurePath
-from hashlib import md5
+from dataclasses import dataclass, field, asdict
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import path
 import file
-import obj
-import dictionary
 from dictionary import gets
 from relation import Relation
 from . import Query, api, request
@@ -32,77 +30,71 @@ def equal(p: Path, drive: File) -> bool:
         file.content_equivalents(p, [drive], lambda f: File.content(f.id))
 
 
+@dataclass
 class File:
-    def __init__(self, name: str | None=None, mimeType: str | None=None,
-                 id: str | None=None, parents: list[str]=['root'],
-                 owners: list[str] | None=None, p: Path=None):
-        self.name = name or p.name if p else None
-        self.mimeType = mimeType or (p and (FOLDER_MIMETYPE if p.is_dir() \
-                else magic.from_file(p, mime=True)))
-        self.id = id
-        self.parents = parents
-        self.owners = owners
-        self.p = p 
-        if id: self.__dict__ |= api.request(files.get(fileId=id))
-        if p: self.one()
-
-    def one(self) -> Self:
-        if len(fs := self.matches()):
-            for f in fs[1:]: f.delete()
-            self.__dict__ |= fs[0]
-            return self.recurse()
-        self.create()
-        print(vars(self))
-        return self
-
-    def matches(self, pattern=None) -> list[File]:
-        metadata_matches = File.list(Query.build(
-            dictionary.remove(self.body(), ['fileId']), pattern=pattern))
-        if self.p and self.p.is_file():
-            return file.content_equivalents(self.p, metadata_matches, \
-                                            lambda f: File.content(f.id))
-        return metadata_matches
+    mimeType: str | None = field(default=None)
+    parents: list[str] | None = field(default=None)
+    owners: dict | None = field(default=None)
+    id: str = field(default=None)
+    name: str = field(default=None)
 
     @staticmethod
-    def list(q: Query, pageToken: str=None) -> list[dict]:
+    def sync(local: Path, folder: PurePath=PurePath('/')) -> File:
+        return File._sync(local, File.at(folder, File.one).id)
+    
+    @staticmethod
+    def _sync(local: Path, parent: str='root') -> File:
+        f = File(parents=[parent], name=local.name)
+        if local.is_file():
+            f.mimeType = magic.from_file(local, mime=True)
+            f.one(local)
+        if local.is_dir():
+            f.one()
+            for s in local.iterdir(): File._sync(s, f.id)
+        return f
+
+    def one(self, content: Path=None) -> Self:
+        for i, f in reversed(list(enumerate(self.list(content)))):
+            if i == 0: self.__dict__ |= f; return self
+            f.delete()
+        return self.create(content)
+
+    def create(self, content: Path, uploadType='multipart') -> Self:
+        if content.is_dir(): uploadType = 'media' 
+        if content.is_file(): media_body = MediaFileUpload(str(content))
+        self.__dict__ |= api.request(files.create(uploadType=uploadType,
+            body=asdict(self), media_body=media_body))
+        return self
+
+    @staticmethod
+    def at(drive: PurePath=PurePath('/'), action: callable=None) -> \
+            list[File] | File | None:
+        if not action: action = File.one
+        if path.top_level(drive): return File(id='root')
+        if parents := File.at(drive.parent, action):
+            return File(name=drive.name, parents=[parents.id] \
+                if isinstance(parents, File) else [p.id for p in parents]) \
+                    .action()
+        return None
+
+    def list(self, content: Path=None, pattern=None) -> list[File]:
+        fs = [File(**d) for d in File._list(Query.build(asdict(self),
+            pattern))]
+        if not content: return fs
+        with open(content, 'rb') as c:
+            return list(filter(lambda f: file.equivalent([c.read(),
+                File.content(f.id)]), fs))
+        
+    @staticmethod
+    def _list(q: Query, pageToken: str=None) -> list[dict]:
         ds, t = gets(File._page(q, pageToken), {'files': [],
                                                 'nextPageToken': []})
-        return [File(**d) for d in ds] + (t and File.list(q, t))
+        return ds + (t and File._list(q, t))
 
     @staticmethod
     def _page(q: Query, pageToken: str) -> list[dict]:
         FS = f"files({','.join(FIELDS | {'owners'})}),nextPageToken"
         return request(files.list(q=q, fields=FS, pageToken=pageToken))
-
-    def recurse(self) -> Self:
-        if self.p and self.p.is_dir():
-            for s in self.p.iterdir(): File(parents=[self.id], p=s).one()
-        return self
-
-    def create(self) -> Self:
-        if not self.p or self.p.is_dir():
-            self._create()
-        elif self.p.is_file():
-            self._create('multipart', MediaFileUpload(str(self.p)))
-        return self.recurse()
-
-    def _create(self, uploadType=None, media: MediaFileUpload=None) -> Self:
-        self.__dict__ |= api.request(files.create(uploadType=uploadType,
-            body=self.body(), media_body=media))
-        return self
-
-    def body(self) -> dict:
-        return {('fileId' if k == 'id' else k): v for k, v \
-                in vars(self).items() if k in FIELDS and v}
-
-    def files(self, action: callable=None) -> list[File]:
-        if not action: action = File.matches
-        chosen = action(self)
-        return list(chosen) if hasattr(chosen, '__iter__') \
-            else [chosen]
-    
-    def delete(self) -> str | None:
-        return self.id and api.request(files.delete(fileId=self.id))
 
     @staticmethod
     def content(id) -> bytes:
@@ -113,27 +105,6 @@ class File:
         downloader = MediaIoBaseDownload(fh, request)
         while not downloader.next_chunk()[1]: continue
         return fh.getvalue()
-
-    @staticmethod
-    def map(p: Path, drive: PurePath) -> File:
-        return File(p=p).at(drive, File.one)
-
-    @staticmethod
-    def folder(drive: PurePath) -> File:
-        folders = File.at(drive, File.one)
-        if len(folders) != 1 or folders[0].mimeType != FOLDER_MIMETYPE:
-            raise Exception(f'{folders} should be singular & a folder')
-        return folders[0]
-
-    @staticmethod
-    def at(drive: PurePath=PurePath('/'), action: callable=None) \
-            -> list[File]:
-        if not action: action = File.matches
-        if path.top_level(drive): return [File(id='root')]
-        if parents := File.path(drive.parent):
-            return File(name=drive.name, parents=[f.id for f in parents]) \
-                .files(action)
-        return []
 
     @staticmethod
     def prefixed(fs: list[File], prefix) -> list[File]:

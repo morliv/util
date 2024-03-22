@@ -18,14 +18,15 @@ class Query(str):
             return Query.Clause.from_parts('name', p, 'contains')
     
     @staticmethod
-    def build(d: dict=None, skip={'id'}, pattern=None, logic_op='and') \
+    def build(d: dict=None, pattern=None, skip={'id'}, logic_op='and') \
             -> Query: 
-        for s in skip: d.pop(s, None)
-        if pattern: d.pop('name', None)
-        q = Query.concat([Query.expression(k, v) for k, v in d.items()], \
-                         logic_op)
-        return Query.concat([q, Query.Clause.name_contains_pattern(pattern)]) \
-            if pattern else q
+        expressions = []
+        for k, v in d.items():
+            if not (v is None or k in skip or pattern and k == 'name'):
+                expressions.append(Query.expression(k, v))
+        if pattern:
+            expressions.append(Query.Clause.name_contains_pattern(pattern))
+        return Query.concat(expressions, logic_op)
 
     @staticmethod
     def concat(expressions: list[str], logic_op='and') -> Query:

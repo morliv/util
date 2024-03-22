@@ -111,7 +111,7 @@ def equivalent(bs: list[bytes]) -> bool:
     return len(set(md5(b).hexdigest() for b in bs)) < 2
 
 
-def content_equivalents(p: Path, candidates: list, candidates_read: callable) \
+def eq_contents(p: Path, candidates: list, candidates_read: callable) \
         -> list:
     with open(p, 'rb') as f:
         return list(filter(
