@@ -56,12 +56,13 @@ class File:
 
     def one(self, content: Path=None) -> Self:
         for i, f in reversed(list(enumerate(self.list(content)))):
-            if i == 0: self.__dict__ |= f; return self
+            if i == 0: self.__dict__ |= f.__dict__; return self
             f.delete()
         return self.create(content)
 
     def create(self, content: Path=None, uploadType='media') -> Self:
         if content: uploadType = 'multipart' 
+        print(vars(self))
         self.__dict__ |= api.request(files.create(uploadType=uploadType,
             body=asdict(self), media_body=content and \
                 MediaFileUpload(str(content))))
@@ -101,7 +102,7 @@ class File:
         return request(files.list(q=q, fields=FS, pageToken=pageToken))
 
     @staticmethod
-    def content(id) -> bytes:
+    def content(id) -> bytes | None:
         if int(api.request(files.get(fileId=id, fields='size')) \
                .get('size'), 0) == 0: return None
         fh = io.BytesIO()

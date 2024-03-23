@@ -107,8 +107,8 @@ def read_file(file_path):
         return file.readlines()
 
 
-def equivalent(bs: list[bytes]) -> bool:
-    return len(set(md5(b).hexdigest() for b in bs)) < 2
+def equivalent(bs: list[bytes | None]) -> bool:
+    return len(set(b and md5(b).hexdigest() for b in bs)) < 2
 
 
 def eq_contents(p: Path, candidates: list, candidates_read: callable) \
