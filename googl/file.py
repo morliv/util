@@ -20,14 +20,14 @@ files = api.drive.files()
 
 def _equal_contents(p: Path, drive: File) -> bool:
     return Relation(list(p.iterdir()), \
-        File(parents=[drive.id]).matches(), equal).bijection()
+        File(parents=[drive.id]).list(), equal).bijection()
 
 
 def equal(p: Path, drive: File) -> bool:
     return p.name == drive.name \
         and (p.is_dir() == (drive.mimeType == FOLDER_MIMETYPE)) \
         and _equal_contents(p, drive) if p.is_dir() else \
-        file.content_equivalents(p, [drive], lambda f: File.content(f.id))
+        file.eq_contents(p, [drive], lambda f: File.content(f.id))
 
 
 @dataclass
@@ -49,6 +49,7 @@ class File:
             f.mimeType = magic.from_file(local, mime=True)
             f.one(local)
         if local.is_dir():
+            f.mimeType = FOLDER_MIMETYPE
             f.one()
             for s in local.iterdir(): File._sync(s, f.id)
         return f
@@ -59,11 +60,11 @@ class File:
             f.delete()
         return self.create(content)
 
-    def create(self, content: Path, uploadType='multipart') -> Self:
-        if content.is_dir(): uploadType = 'media' 
-        if content.is_file(): media_body = MediaFileUpload(str(content))
+    def create(self, content: Path=None, uploadType='media') -> Self:
+        if content: uploadType = 'multipart' 
         self.__dict__ |= api.request(files.create(uploadType=uploadType,
-            body=asdict(self), media_body=media_body))
+            body=asdict(self), media_body=content and \
+                MediaFileUpload(str(content))))
         return self
 
     @staticmethod
@@ -84,6 +85,9 @@ class File:
         with open(content, 'rb') as c:
             return list(filter(lambda f: file.equivalent([c.read(),
                 File.content(f.id)]), fs))
+
+    def delete(self):
+        self.__dict__ |= request(files.delete(fileId=self.id))
         
     @staticmethod
     def _list(q: Query, pageToken: str=None) -> list[dict]:
