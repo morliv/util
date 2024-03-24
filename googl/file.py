@@ -61,8 +61,8 @@ class File:
         return self.create(content)
 
     def create(self, content: Path=None, uploadType='media') -> Self:
-        if content: uploadType = 'multipart' 
         print(vars(self))
+        if content: uploadType = 'multipart'
         self.__dict__ |= api.request(files.create(uploadType=uploadType,
             body=asdict(self), media_body=content and \
                 MediaFileUpload(str(content))))
@@ -74,9 +74,9 @@ class File:
         if not action: action = File.one
         if path.top_level(drive): return File(id='root')
         if parents := File.at(drive.parent, action):
-            return File(name=drive.name, parents=[parents.id] \
-                if isinstance(parents, File) else [p.id for p in parents]) \
-                    .action()
+            return action(File(name=drive.name,
+                parents=[parents.id] if isinstance(parents, File) \
+                else [p.id for p in parents]))
         return None
 
     def list(self, content: Path=None, pattern=None) -> list[File]:
