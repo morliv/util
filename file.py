@@ -107,7 +107,7 @@ def read_file(file_path):
         return file.readlines()
 
 
-def equivalent(bs: list[bytes | None]) -> bool:
+def eq(bs: list[bytes | None]) -> bool:
     return len(set(b and md5(b).hexdigest() for b in bs)) < 2
 
 
@@ -115,7 +115,7 @@ def eq_contents(p: Path, candidates: list, candidates_read: callable) \
         -> list:
     with open(p, 'rb') as f:
         return list(filter(
-            lambda c: equivalent([f.read(), candidates_read(c)]), candidates))
+            lambda c: eq([f.read(), candidates_read(c)]), candidates))
 
 
 def files_are_equivalent(file1_path: Path, file2_path: Path, print_diff=True):

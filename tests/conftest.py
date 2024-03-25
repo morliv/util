@@ -6,7 +6,7 @@ print(sys.path)
 import pytest
 
 from file import Structure
-from list import nestedly
+from l import nestedly
 
 
 @pytest.fixture(params=[

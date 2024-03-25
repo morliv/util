@@ -1,12 +1,14 @@
 from __future__ import annotations
 import io
 import magic
+from functools import partial
 from typing import Self
 from pathlib import Path, PurePath
 from dataclasses import dataclass, field, asdict
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
+import l
 import path
 import file
 from dictionary import gets
@@ -40,56 +42,48 @@ class File:
 
     @staticmethod
     def sync(local: Path, folder: PurePath=PurePath('/')) -> File:
-        return File._sync(local, File.at(folder, File.one).id)
+        return File._sync(local, l.one(File.at(folder), File.create,
+                                       File.delete).id)
     
     @staticmethod
     def _sync(local: Path, parent: str='root') -> File:
         f = File(parents=[parent], name=local.name)
         if local.is_file():
             f.mimeType = magic.from_file(local, mime=True)
-            f.one(local)
+            with open(local, 'rb') as c:
+                return l.one(sorted(f.list(), key=
+                        lambda f: file.eq([c.read(), File.content(f.id)]),
+                        reverse=True),
+                    partial(f.create, MediaFileUpload(str(local))),
+                    File.delete)
         if local.is_dir():
             f.mimeType = FOLDER_MIMETYPE
-            f.one()
+            f = l.one(f.list(), f.create, f.delete)
             for s in local.iterdir(): File._sync(s, f.id)
         return f
 
-    def one(self, content: Path=None) -> Self:
-        for i, f in reversed(list(enumerate(self.list(content)))):
-            if i == 0: self.__dict__ |= f.__dict__; return self
-            f.delete()
-        return self.create(content)
-
-    def create(self, content: Path=None, uploadType='media') -> Self:
+    def create(self, media_body: MediaFileUpload=None, uploadType='media') \
+            -> Self:
         print(vars(self))
-        if content: uploadType = 'multipart'
+        if media_body: uploadType = 'multipart'
         self.__dict__ |= api.request(files.create(uploadType=uploadType,
-            body=asdict(self), media_body=content and \
-                MediaFileUpload(str(content))))
+            body=asdict(self), media_body=media_body))
         return self
 
     @staticmethod
-    def at(drive: PurePath=PurePath('/'), action: callable=None) -> \
-            list[File] | File | None:
-        if not action: action = File.one
-        if path.top_level(drive): return File(id='root')
-        if parents := File.at(drive.parent, action):
-            return action(File(name=drive.name,
-                parents=[parents.id] if isinstance(parents, File) \
-                else [p.id for p in parents]))
+    def at(drive: PurePath=PurePath('/')) -> list[File] | None:
+        if path.top_level(drive): return [File(id='root')]
+        if parents := File.at(drive.parent):
+            return File(parents=parents, name=drive.name).list()
         return None
-
-    def list(self, content: Path=None, pattern=None) -> list[File]:
-        fs = [File(**d) for d in File._list(Query.build(asdict(self),
-            pattern))]
-        if not content: return fs
-        with open(content, 'rb') as c:
-            return list(filter(lambda f: file.equivalent([c.read(),
-                File.content(f.id)]), fs))
 
     def delete(self):
         self.__dict__ |= request(files.delete(fileId=self.id))
         
+    def list(self, pattern=None) -> list[File]:
+        return [File(**d) for d in File._list(Query.build(asdict(self),
+            pattern))]
+
     @staticmethod
     def _list(q: Query, pageToken: str=None) -> list[dict]:
         ds, t = gets(File._page(q, pageToken), {'files': [],
@@ -98,11 +92,12 @@ class File:
 
     @staticmethod
     def _page(q: Query, pageToken: str) -> list[dict]:
-        FS = f"files({','.join(FIELDS | {'owners'})}),nextPageToken"
-        return request(files.list(q=q, fields=FS, pageToken=pageToken))
+        return request(files.list(q=q, fields=("files(" \
+            + ','.join(File.__dataclass_fields__.keys()) + "), nextPageToken"),
+            pageToken=pageToken))
 
     @staticmethod
-    def content(id) -> bytes | None:
+    def content(id: str) -> bytes:
         if int(api.request(files.get(fileId=id, fields='size')) \
                .get('size'), 0) == 0: return None
         fh = io.BytesIO()
