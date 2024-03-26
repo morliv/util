@@ -71,9 +71,10 @@ class File:
         return self
 
     @staticmethod
-    def at(drive: PurePath=PurePath('/')) -> list[File] | None:
+    def at(drive=PurePath('/')) -> list[File] | None:
+        drive = PurePath(drive)
         if path.top_level(drive): return [File(id='root')]
-        if parents := File.at(drive.parent):
+        if parents := [f.id for f in File.at(drive.parent)]:
             return File(parents=parents, name=drive.name).list()
         return None
 
@@ -93,7 +94,7 @@ class File:
     @staticmethod
     def _page(q: Query, pageToken: str) -> list[dict]:
         return request(files.list(q=q, fields=("files(" \
-            + ','.join(File.__dataclass_fields__.keys()) + "), nextPageToken"),
+            + ','.join(File.__dataclass_fields__.keys()) + "),nextPageToken"),
             pageToken=pageToken))
 
     @staticmethod
