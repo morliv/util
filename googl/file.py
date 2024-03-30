@@ -22,27 +22,26 @@ files = api.drive.files()
 
 def _equal_contents(p: Path, drive: File) -> bool:
     return Relation(list(p.iterdir()), \
-        File(parents=[drive.id]).match(), equal).bijection()
+        File(parents=[drive['id']]).match(), equal).bijection()
 
 
 def equal(p: Path, drive: File) -> bool:
-    return p.name == drive.name \
-        and (p.is_dir() == (drive.mimeType == FOLDER_MIMETYPE)) \
+    return p.name == drive['name'] \
+        and (p.is_dir() == (drive['mimeType'] == FOLDER_MIMETYPE)) \
         and _equal_contents(p, drive) if p.is_dir() else \
-        file.eq_contents(p, [drive], lambda f: f.content())
+        file.eq_contents(p, [drive], File.content)
 
 
 class File(dict):
     @staticmethod
     def sync(local: Path, folder: PurePath=PurePath('/')) -> File:
-        return File._sync(local, l.one(File.at(folder), File.create,
-                                       File.delete))
-    
+        return File._sync(local, File.at(folder)['id'])
+  
     @staticmethod
     def _sync(local: Path, parent: str='root') -> File:
         f = File(parents=[parent], name=local.name)
         if local.is_file():
-            f.mimeType = magic.from_file(local, mime=True)
+            f['mimeType'] = magic.from_file(local, mime=True)
             with open(local, 'rb') as c:
                 return l.one(sorted(f.match(), key=
                         lambda f: file.eq([c.read(), f.content()]),
@@ -50,32 +49,30 @@ class File(dict):
                     partial(f.create, MediaFileUpload(str(local))),
                     File.delete)
         if local.is_dir():
-            f.mimeType = FOLDER_MIMETYPE
+            f['mimeType'] = FOLDER_MIMETYPE
             f = l.one(f.match(), f.create, f.delete)
             for s in local.iterdir(): File._sync(s, f.id)
         return f
 
+    @staticmethod
+    def at(drive=PurePath('/')) -> File:
+        drive = PurePath(drive)
+        if path.top_level(drive): return File(id='root')
+        f = File(parents=[File.at(drive.parent)['id']], name=drive.name)
+        return l.one(f.match(), f.create, f.delete)
+
     def create(self, media_body: MediaFileUpload=None, uploadType='media') \
-            -> Self:
+            -> File:
         print(vars(self))
         if media_body: uploadType = 'multipart'
-        self.__dict__ |= api.request(files.create(uploadType=uploadType,
+        return api.request(files.create(uploadType=uploadType,
             body=self, media_body=media_body))
-        return self
-
-    @staticmethod
-    def at(drive=PurePath('/')) -> list[File] | None:
-        drive = PurePath(drive)
-        if path.top_level(drive): return [File(id='root')]
-        if parents := [f['id'] for f in File.at(drive.parent)]:
-            return File(parents=parents, name=drive.name).match()
-        return None
 
     def delete(self):
         request(files.delete(fileId=self['id']))
         
     def match(self, attrs: set[str]=None, pattern=None) -> list[File]:
-        if not attrs: attrs = set(self.keys()) | {'id'}
+        if not attrs: attrs = set(self.keys()) | {'id', 'name', 'mimeType'}
         return File.list(Query.build(self, pattern), attrs)
 
     @staticmethod
@@ -84,25 +81,16 @@ class File(dict):
         r, pageToken = gets(request(files.list(q=q, fields= \
             f"files({','.join(attrs)}),nextPageToken", pageToken=pageToken)),
             {'files': [], 'nextPageToken': []})
-        return r + (pageToken and File._list(q, attrs, pageToken))
+        return r + (pageToken and File.list(q, attrs, pageToken))
 
     def content(self) -> bytes | None:
-        if int(api.request(files.get(fileId=self.id, fields='size')) \
+        if int(api.request(files.get(fileId=self['id'], fields='size')) \
                .get('size'), 0) == 0: return None
         fh = io.BytesIO()
-        request = files.get_media(fileId=self.id)
+        request = files.get_media(fileId=self['id'])
         downloader = MediaIoBaseDownload(fh, request)
         while not downloader.next_chunk()[1]: continue
         return fh.getvalue()
-
-    @staticmethod
-    def prefixed(fs: list[File], prefix) -> list[File]:
-        return list(filter(lambda f: f.name.startswith(prefix), fs)) 
-
-    @staticmethod
-    def delete_by_prefix(fs: list[File], prefix: str):
-        for f in fs:
-            if f.name.startswith(prefix): f.delete()
 
     def permissions(self):
         permissions = File.service.permissions().list(fileId=self.id).execute()

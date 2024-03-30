@@ -16,7 +16,9 @@ def one(l: list[T], create: Callable[[], T], delete: Callable[[T], None]) \
         delete(e)
     return create()
 
+
 U = TypeVar('U')
+
 
 def s(c: Callable[[T], U], i: Iterable[T]) -> list[U]:
     return [c(e) for e in i]
