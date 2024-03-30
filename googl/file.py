@@ -51,7 +51,7 @@ class File(dict):
         if local.is_dir():
             f['mimeType'] = FOLDER_MIMETYPE
             f = l.one(f.match(), f.create, f.delete)
-            for s in local.iterdir(): File._sync(s, f.id)
+            for s in local.iterdir(): File._sync(s, f['id'])
         return f
 
     @staticmethod
@@ -72,7 +72,7 @@ class File(dict):
         request(files.delete(fileId=self['id']))
         
     def match(self, attrs: set[str]=None, pattern=None) -> list[File]:
-        if not attrs: attrs = set(self.keys()) | {'id', 'name', 'mimeType'}
+        if not attrs: attrs = set(self.keys()) | {'mimeType', 'id', 'name'}
         return File.list(Query.build(self, pattern), attrs)
 
     @staticmethod
@@ -81,7 +81,8 @@ class File(dict):
         r, pageToken = gets(request(files.list(q=q, fields= \
             f"files({','.join(attrs)}),nextPageToken", pageToken=pageToken)),
             {'files': [], 'nextPageToken': []})
-        return r + (pageToken and File.list(q, attrs, pageToken))
+        return [File(r) for r in
+            r + (pageToken and File.list(q, attrs, pageToken))]
 
     def content(self) -> bytes | None:
         if int(api.request(files.get(fileId=self['id'], fields='size')) \
