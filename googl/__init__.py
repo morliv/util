@@ -21,7 +21,7 @@ def parsed_args():
 
 
 def listing(args):
-    if args.list_files: return File.path(args.drive_path)
+    if args.list_files: return File.at(args.drive_path).match()
 
 
 def mapping(args):
