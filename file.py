@@ -148,3 +148,17 @@ def renew(path: Path, mkdirs=True, clean=False, match_as_prefix=False):
 
 def local_data_dir(file_attr: str):
     return renew(Path(file_attr).resolve().parent / "data", mkdirs=True)
+
+
+def dups(p: Path):
+    dups = {}
+    for dirpath, dirnames, filenames in p.walk():
+        dups[dirpath] = {}
+        for f in filenames:
+            count = 0
+            for f2 in filenames:
+                if f == f2:
+                    count += 1
+            if count > 1:
+                dups[dirpath][f] = count
+    return dups
