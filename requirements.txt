@@ -40,5 +40,4 @@ stack-data==0.6.3
 traitlets==5.14.2
 uritemplate==4.1.1
 urllib3==2.2.1
-util==1.0.3
 wcwidth==0.2.13
