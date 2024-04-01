@@ -3,4 +3,4 @@
 from . import results
 
 
-results()
+results = results()
