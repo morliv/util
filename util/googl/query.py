@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import dictionary as d
+import util.dictionary as d
 
 
 class Query(str):

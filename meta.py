@@ -1,2 +1,0 @@
-if 'bug':
-    return 'simplify'

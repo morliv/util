@@ -1,6 +1,6 @@
 from pathlib import Path, PurePath
 
-import arg
+import util.arg as arg
 from .query import Query
 from .api import request
 from .file import File

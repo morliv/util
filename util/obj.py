@@ -1,4 +1,4 @@
-import dictionary as d
+import util.dictionary as d
 
 
 def eq_attributes(first: type, second: type, ignore=[]):

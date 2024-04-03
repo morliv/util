@@ -5,7 +5,7 @@ print(sys.path)
 
 import pytest
 
-from file import Structure
+from util.file import Structure
 from l import nestedly
 
 

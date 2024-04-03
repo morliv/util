@@ -10,8 +10,8 @@ from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
 import l
 import path
-import file
-from dictionary import gets
+import util.file as file
+from util.dictionary import gets
 from relation import Relation
 from . import Query, api, request
 
