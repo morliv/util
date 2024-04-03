@@ -2,7 +2,7 @@ from unittest import TestCase
 from collections import namedtuple
 import itertools
 
-from relation import Relation
+from util.relation import Relation
 
 
 class TestSets(TestCase):

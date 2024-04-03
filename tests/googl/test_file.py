@@ -1,5 +1,5 @@
-from relation import Relation
-from googl import file, File
+from util.relation import Relation
+from util.googl import file, File
 
 
 def test_files(paths):

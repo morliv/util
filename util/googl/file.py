@@ -8,11 +8,9 @@ from dataclasses import dataclass, field
 
 from googleapiclient.http import MediaFileUpload, MediaIoBaseDownload
 
-import l
-import path
-import util.file as file
+from util import l, path, file
 from util.dictionary import gets
-from relation import Relation
+from util.relation import Relation
 from . import Query, api, request
 
 

@@ -1,12 +1,10 @@
-import sys
 from pathlib import Path
-sys.path.append(str(Path.home() / 'util'))
-print(sys.path)
 
 import pytest
 
 from util.file import Structure
-from l import nestedly
+from util.l import nestedly
+
 
 
 @pytest.fixture(params=[
