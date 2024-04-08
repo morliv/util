@@ -6,6 +6,13 @@ build-backend = "flit_core.buildapi"
 name = "util"
 authors = [{name = "M", email = "refits.minxes0h@icloud.com"}]
 dynamic = ["version", "description"]
+dependencies = [
+    "python-magic",
+    "pyyaml"
+]
 
 [license]
 file = "UNLICENSE"
+
+[tool.flit.sdist]
+exclude = ["tests/"]
