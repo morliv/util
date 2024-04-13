@@ -1,9 +1,6 @@
-[build-system]
-requires = ["flit_core >=3.2,<4"]
-build-backend = "flit_core.buildapi"
-
 [project]
 name = "util"
+version = "0.1.5"
 authors = [{name = "M", email = "refits.minxes0h@icloud.com"}]
 dynamic = ["version", "description"]
 dependencies = [
@@ -16,3 +13,19 @@ file = "UNLICENSE"
 
 [tool.flit.sdist]
 exclude = ["tests/"]
+
+[tool.poetry]
+name = "util"
+version = "0.1.5"
+description = "General funcs & classes; extending standard libs"
+authors = ["M <refits.minxes0h@icloud.com>"]
+license = "UNLICENSE"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.12"
+python-magic = "^0.4.27"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

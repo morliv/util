@@ -1,8 +1,8 @@
 import argparse
 
-def parse(arg_kwarg_list):
+def parse(arg_kwarg: list[tuple]):
     p = argparse.ArgumentParser()
-    for a, k in arg_kwarg_list:
+    for a, k in arg_kwarg:
         p.add_argument(*a, **k)
     return p.parse_args()
 

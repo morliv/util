@@ -1,10 +1,12 @@
 from __future__ import annotations
 import tempfile
+import argparse
 import magic
+import difflib
+import shutil
 from pathlib import Path
 from typing import Any, TypeVar
 from hashlib import md5
-
 
 def temp_file(content=None, dir=None):
     file = tempfile.NamedTemporaryFile(mode='w+t', dir=dir, delete=False)
@@ -162,3 +164,8 @@ def dups(p: Path):
             if count > 1:
                 dups[dirpath][f] = count
     return dups
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-p', '--path')
+    ds = dups(parser.parse_args().path)
